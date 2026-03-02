@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WhatsApp AI Engineer Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            background-color: #0f172a;
+            /* Slate 900 */
+            color: #f8fafc;
+            /* Slate 50 */
+        }
+
+        .bg-glass {
+            background: rgba(30, 41, 59, 0.7);
+            /* Slate 800 */
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .status-running {
+            color: #34d399;
+        }
+
+        /* Emerald 400 */
+        .status-completed {
+            color: #60a5fa;
+        }
+
+        /* Blue 400 */
+        .status-stopped {
+            color: #fbbf24;
+        }
+
+        /* Amber 400 */
+        .status-failed {
+            color: #f87171;
+        }
+
+        /* Red 400 */
+    </style>
+</head>
+
+<body class="min-h-screen p-8 font-sans antialiased">
+    <div class="max-w-6xl mx-auto">
+        <!-- Header -->
+        <header class="mb-10 flex justify-between items-center">
+            <div>
+                <h1
+                    class="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-emerald-400">
+                    WhatsApp AI Engineer
+                </h1>
+                <p class="text-slate-400 mt-1">Session Management & Operations Dashboard</p>
+            </div>
+            <div class="flex space-x-4">
+                <button onclick="fetchStats(); fetchSessions(1);"
+                    class="px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-lg text-sm font-medium transition-colors border border-blue-500">
+                    Refresh Data
+                </button>
+            </div>
+        </header>
+
+        <!-- Stats Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10">
+            <div class="bg-glass rounded-xl p-6 shadow-xl">
+                <h3 class="text-slate-400 text-sm font-medium mb-2">Total API Cost</h3>
+                <div class="text-3xl font-bold text-emerald-400" id="stat-cost">$0.00</div>
+            </div>
+            <div class="bg-glass rounded-xl p-6 shadow-xl">
+                <h3 class="text-slate-400 text-sm font-medium mb-2">Active Sessions (24h)</h3>
+                <div class="text-3xl font-bold" id="stat-active">0</div>
+            </div>
+            <div class="bg-glass rounded-xl p-6 shadow-xl">
+                <h3 class="text-slate-400 text-sm font-medium mb-2">Total Sessions Processed</h3>
+                <div class="text-3xl font-bold" id="stat-total">0</div>
+            </div>
+            <div class="bg-glass rounded-xl p-6 shadow-xl">
+                <h3 class="text-slate-400 text-sm font-medium mb-2">Messages Handled</h3>
+                <div class="text-3xl font-bold" id="stat-messages">0</div>
+            </div>
+        </div>
+
+        <!-- Sessions List -->
+        <div class="bg-glass rounded-xl shadow-xl overflow-hidden border border-slate-700">
+            <div class="px-6 py-4 border-b border-slate-700 flex justify-between items-center">
+                <h2 class="text-xl font-semibold">Recent Sessions</h2>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-sm text-slate-300">
+                    <thead class="text-xs text-slate-400 uppercase bg-slate-800/50">
+                        <tr>
+                            <th scope="col" class="px-6 py-4">Session ID</th>
+                            <th scope="col" class="px-6 py-4">User Phone</th>
+                            <th scope="col" class="px-6 py-4">Task</th>
+                            <th scope="col" class="px-6 py-4">Status</th>
+                            <th scope="col" class="px-6 py-4">Cost ($)</th>
+                            <th scope="col" class="px-6 py-4">Last Updated</th>
+                            <th scope="col" class="px-6 py-4 text-center">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="sessions-table-body" class="divide-y divide-slate-700">
+                        <!-- Rows injected here -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Pagination Controls -->
+            <div class="p-4 border-t border-slate-700 flex items-center justify-between" id="pagination-controls">
+                <!-- Injected via JS -->
+            </div>
+        </div>
+
+        <!-- Modal for viewing messages -->
+        <div id="messages-modal"
+            class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm hidden">
+            <div
+                class="bg-slate-800 border border-slate-700 rounded-xl shadow-2xl w-full max-w-4xl max-h-[85vh] flex flex-col">
+                <div class="flex justify-between items-center p-6 border-b border-slate-700">
+                    <h3 class="text-xl font-semibold text-white" id="modal-title">Session Messages</h3>
+                    <button onclick="closeModal()" class="text-slate-400 hover:text-white">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+                <div class="p-6 overflow-y-auto flex-1 space-y-4" id="modal-content">
+                    <!-- Messages will be injected here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentPage = 1;
+
+        async function fetchStats() {
+            try {
+                const res = await fetch('/api/stats');
+                const data = await res.json();
+                document.getElementById('stat-cost').innerText = `$${data.totalCost.toFixed(3)}`;
+                document.getElementById('stat-active').innerText = data.activeCount;
+                document.getElementById('stat-total').innerText = data.totalSessions;
+                document.getElementById('stat-messages').innerText = data.totalMessages;
+            } catch (err) {
+                console.error("Error fetching stats:", err);
+            }
+        }
+
+        async function fetchSessions(page = 1) {
+            try {
+                const res = await fetch(`/api/sessions?page=${page}&limit=15`);
+                const data = await res.json();
+                currentPage = data.page;
+
+                const tbody = document.getElementById('sessions-table-body');
+                tbody.innerHTML = '';
+
+                data.sessions.forEach(session => {
+                    const statusColorClass = `status-${session.status.toLowerCase()}`;
+                    const time = new Date(session.updated_at).toLocaleString();
+                    const taskPreview = session.task.length > 50 ? session.task.substring(0, 50) + '...' : session.task;
+
+                    const tr = document.createElement('tr');
+                    tr.className = "hover:bg-slate-800/50 transition-colors";
+                    tr.innerHTML = `
+                        <td class="px-6 py-4 font-mono text-xs text-slate-400">${session.id}</td>
+                        <td class="px-6 py-4">${session.user_phone}</td>
+                        <td class="px-6 py-4 truncate max-w-xs" title="${session.task}">${taskPreview}</td>
+                        <td class="px-6 py-4 font-semibold ${statusColorClass} capitalize">${session.status}</td>
+                        <td class="px-6 py-4 text-emerald-400">$${(session.cost_usd || 0).toFixed(3)}</td>
+                        <td class="px-6 py-4 text-xs text-slate-400">${time}</td>
+                        <td class="px-6 py-4 text-center">
+                            <button onclick="viewMessages('${session.id}')" class="text-blue-400 hover:text-blue-300 text-sm font-medium">Logs</button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+
+                renderPagination(data.page, data.totalPages);
+            } catch (err) {
+                console.error("Error fetching sessions:", err);
+            }
+        }
+
+        function renderPagination(current, total) {
+            const container = document.getElementById('pagination-controls');
+            let html = `
+                <span class="text-sm text-slate-400">Showing page <span class="font-semibold text-slate-200">${current}</span> of <span class="font-semibold text-slate-200">${total}</span></span>
+                <div class="space-x-2 flex">
+                    <button onclick="fetchSessions(${current - 1})" ${current <= 1 ? 'disabled' : ''} class="px-3 py-1 bg-slate-800 border border-slate-700 rounded text-slate-300 hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed">Previous</button>
+                    <button onclick="fetchSessions(${current + 1})" ${current >= total ? 'disabled' : ''} class="px-3 py-1 bg-slate-800 border border-slate-700 rounded text-slate-300 hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed">Next</button>
+                </div>
+            `;
+            container.innerHTML = html;
+        }
+
+        async function viewMessages(sessionId) {
+            const modal = document.getElementById('messages-modal');
+            const content = document.getElementById('modal-content');
+            const title = document.getElementById('modal-title');
+
+            title.innerText = `Messages: ${sessionId}`;
+            content.innerHTML = '<div class="text-center text-slate-400 py-10">Loading logs...</div>';
+            modal.classList.remove('hidden');
+
+            try {
+                const res = await fetch(`/api/sessions/${sessionId}/messages`);
+                const messages = await res.json();
+
+                if (messages.length === 0) {
+                    content.innerHTML = '<div class="text-center text-slate-400 py-10">No messages found for this session.</div>';
+                    return;
+                }
+
+                content.innerHTML = '';
+                messages.forEach(msg => {
+                    const isUser = msg.role === 'user';
+                    const div = document.createElement('div');
+                    div.className = `p-4 rounded-lg ${isUser ? 'bg-blue-900/40 ml-12 border border-blue-800/50' : 'bg-slate-800/80 mr-12 border border-slate-700'}`;
+
+                    const time = new Date(msg.timestamp).toLocaleString();
+                    div.innerHTML = `
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="font-semibold text-sm ${isUser ? 'text-blue-400' : 'text-emerald-400'} capitalize">${msg.role}</span>
+                            <span class="text-xs text-slate-500">${time}</span>
+                        </div>
+                        <pre class="text-sm text-slate-300 whitespace-pre-wrap font-sans">${escapeHtml(msg.content)}</pre>
+                    `;
+                    content.appendChild(div);
+                });
+
+                // Scroll to bottom
+                content.scrollTop = content.scrollHeight;
+            } catch (err) {
+                content.innerHTML = `<div class="text-red-400 border border-red-800 bg-red-900/20 p-4 rounded-lg">Error loading messages: ${err.message}</div>`;
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('messages-modal').classList.add('hidden');
+        }
+
+        function escapeHtml(unsafe) {
+            if (!unsafe) return '';
+            return unsafe
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
+        // Close modal on outside click
+        document.getElementById('messages-modal').addEventListener('click', (e) => {
+            if (e.target.id === 'messages-modal') {
+                closeModal();
+            }
+        });
+
+        // Initial load
+        fetchStats();
+        fetchSessions(1);
+
+        // Auto refresh stats every 30s
+        setInterval(fetchStats, 30000);
+    </script>
+</body>
+
+</html>
