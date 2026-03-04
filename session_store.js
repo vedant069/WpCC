@@ -33,11 +33,14 @@ class SessionStore {
                 content TEXT,
                 timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
             );
+            CREATE TABLE IF NOT EXISTS allowed_phones (
+                phone TEXT PRIMARY KEY,
+                label TEXT,
+                added_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            );
             CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_phone);
             CREATE INDEX IF NOT EXISTS idx_sessions_status ON sessions(status);
             CREATE INDEX IF NOT EXISTS idx_messages_session ON messages(session_id);
-            -- Migrate: add thread_open column if not exists (for existing DBs)
-            PRAGMA table_info(sessions);
         `);
         // Safely add thread_open column to existing databases
         try {
@@ -174,6 +177,38 @@ class SessionStore {
         this.db.prepare(
             'UPDATE sessions SET cost_usd = cost_usd + ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?'
         ).run(delta, id);
+    }
+
+    // ── Allowed Phones ────────────────────────────────────────
+
+    getAllowedPhones() {
+        return this.db.prepare('SELECT * FROM allowed_phones ORDER BY added_at DESC').all();
+    }
+
+    isPhoneAllowed(phone) {
+        const row = this.db.prepare('SELECT phone FROM allowed_phones WHERE phone = ?').get(String(phone));
+        return !!row;
+    }
+
+    addAllowedPhone(phone, label = '') {
+        this.db.prepare(
+            'INSERT OR REPLACE INTO allowed_phones (phone, label) VALUES (?, ?)'
+        ).run(String(phone), label);
+    }
+
+    removeAllowedPhone(phone) {
+        this.db.prepare('DELETE FROM allowed_phones WHERE phone = ?').run(String(phone));
+    }
+
+    /**
+     * Seed from config.ALLOWED_PHONES so env-var numbers work on first boot.
+     * Does NOT delete existing entries or previous sessions.
+     */
+    seedAllowedPhones(phones) {
+        const insert = this.db.prepare('INSERT OR IGNORE INTO allowed_phones (phone, label) VALUES (?, ?)');
+        for (const phone of phones) {
+            insert.run(String(phone).trim(), 'seed');
+        }
     }
 }
 

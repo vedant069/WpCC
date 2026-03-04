@@ -465,13 +465,23 @@
                 style="border-color: inherit;">
                 <h2 class="text-xs uppercase tracking-widest font-bold t-text-muted"
                     style="font-family: Poppins, sans-serif;">Session History</h2>
-                <button onclick="startNewSessionView()"
-                    class="text-[#3249d7] hover:text-white bg-[#3249d7]/10 hover:bg-[#3249d7] px-3 py-1.5 rounded-md flex items-center text-xs font-semibold transition-all border border-[#3249d7]/20 hover:border-[#3249d7] cursor-pointer">
-                    <svg class="w-3.5 h-3.5 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
-                    </svg>
-                    New Task
-                </button>
+                <div class="flex items-center gap-2">
+                    <button onclick="showPhonesPanel()" title="Manage Authorized Numbers"
+                        class="text-[#3249d7] hover:text-white bg-[#3249d7]/10 hover:bg-[#3249d7] p-1.5 rounded-md flex items-center text-xs font-semibold transition-all border border-[#3249d7]/20 hover:border-[#3249d7] cursor-pointer">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                    </button>
+                    <button onclick="startNewSessionView()"
+                        class="text-[#3249d7] hover:text-white bg-[#3249d7]/10 hover:bg-[#3249d7] px-3 py-1.5 rounded-md flex items-center text-xs font-semibold transition-all border border-[#3249d7]/20 hover:border-[#3249d7] cursor-pointer">
+                        <svg class="w-3.5 h-3.5 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4">
+                            </path>
+                        </svg>
+                        New Task
+                    </button>
+                </div>
             </div>
 
             <div class="flex-1 overflow-y-auto w-full" id="sessions-list">
@@ -512,6 +522,43 @@
                     class="mt-8 px-6 py-2.5 bg-[#3249d7] hover:bg-[#2a3dbf] text-white font-medium rounded-lg shadow-lg shadow-[#3249d7]/30 transition-colors cursor-pointer">
                     Start New Task
                 </button>
+            </div>
+
+            <!-- Phone Management Panel (sibling to empty-state, inside main) -->
+            <div id="phones-panel" class="absolute inset-0 z-20 t-main overflow-y-auto hidden">
+                <div class="max-w-2xl mx-auto px-4 py-8">
+                    <div class="flex items-center justify-between mb-6">
+                        <h2 class="text-xl font-bold t-text-primary" style="font-family: Poppins, sans-serif;">📱
+                            Authorized Numbers</h2>
+                        <button onclick="hidePhonesPanel()"
+                            class="t-text-muted hover:text-red-400 transition-colors cursor-pointer">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+                    <!-- Add Phone Form -->
+                    <div class="t-card rounded-xl p-4 border mb-6" style="border-color: rgba(50,73,215,0.2);">
+                        <p class="text-xs t-text-muted uppercase tracking-wider font-bold mb-3">Add Number</p>
+                        <div class="flex gap-2">
+                            <input id="new-phone-number" type="text" placeholder="e.g. 919970870091"
+                                class="t-input border rounded-lg px-3 py-2 text-sm flex-1 outline-none focus:ring-1 focus:ring-[#3249d7]"
+                                style="border-color: rgba(50,73,215,0.2);">
+                            <input id="new-phone-label" type="text" placeholder="Label (e.g. Dev 1)"
+                                class="t-input border rounded-lg px-3 py-2 text-sm w-32 outline-none focus:ring-1 focus:ring-[#3249d7]"
+                                style="border-color: rgba(50,73,215,0.2);">
+                            <button onclick="addPhone()"
+                                class="px-4 py-2 bg-[#3249d7] hover:bg-[#2a3dbf] text-white rounded-lg text-sm font-semibold transition-colors cursor-pointer whitespace-nowrap">Add
+                                &amp; Save</button>
+                        </div>
+                        <p class="text-[10px] t-text-muted mt-2">Country code, no + sign. e.g. 919970870091</p>
+                    </div>
+                    <!-- Phone List -->
+                    <div id="phones-list" class="space-y-2">
+                        <div class="text-center t-text-muted text-sm py-8">Loading...</div>
+                    </div>
+                </div>
             </div>
 
             <!-- Workspace Top Bar -->
@@ -632,7 +679,10 @@
             } catch (err) { }
         }
 
+        let currentSessionPage = 1;
+
         async function fetchSessions(page = 1) {
+            currentSessionPage = page;
             try {
                 const res = await fetch(`/api/sessions?page=${page}&limit=15`);
                 const data = await res.json();
@@ -672,7 +722,7 @@
                             <span class="text-[9px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded-sm t-badge ${statusColor}">${s.status}</span>
                         </div>
                         <div class="text-[13px] font-medium t-text-primary line-clamp-2 leading-relaxed mb-2.5 ml-1 select-none">
-                            ${escapeHtml(s.task) || '<span class="italic opacity-50 t-text-muted">No task description</span>'}
+                            ${(() => { const words = (s.task || '').trim().split(/\s+/); const title = words.slice(0, 7).join(' '); return escapeHtml(title + (words.length > 7 ? '…' : '')) || '<span class="italic opacity-50 t-text-muted">No task description</span>'; })()}
                         </div>
                         <div class="flex justify-between items-center text-xs t-text-muted ml-1 font-medium">
                             <span class="${s.cost_usd > 0 ? 'text-[#3249d7]' : ''}">\$${(s.cost_usd || 0).toFixed(4)}</span>
@@ -739,7 +789,9 @@
             document.getElementById('workspace-content').classList.remove('hidden');
             document.getElementById('workspace-input-area').classList.remove('hidden');
 
-            document.getElementById('workspace-title').innerText = taskTitle || 'Session Details';
+            const titleWords = (taskTitle || '').trim().split(/\s+/);
+            const shortTitle = titleWords.slice(0, 7).join(' ') + (titleWords.length > 7 ? '…' : '');
+            document.getElementById('workspace-title').innerText = shortTitle || 'Session Details';
             document.getElementById('workspace-title').style.color = '';
             document.getElementById('workspace-id').innerText = id;
 
@@ -956,7 +1008,104 @@
         fetchStats();
         fetchSessions(1);
         setInterval(fetchStats, 10000);
-        setInterval(() => fetchSessions(1), 10000);
+        setInterval(() => fetchSessions(currentSessionPage), 10000);
+        // ── Phone Management ──────────────────────────────────
+        function showPhonesPanel() {
+            document.getElementById('phones-panel').classList.remove('hidden');
+            document.getElementById('empty-state').classList.add('hidden');
+            // Safely hide workspace elements if currently visible
+            ['workspace-header', 'workspace-content', 'workspace-input-area'].forEach(id => {
+                document.getElementById(id)?.classList.add('hidden');
+            });
+            fetchPhones();
+        }
+
+        function hidePhonesPanel() {
+            document.getElementById('phones-panel').classList.add('hidden');
+            // Only show empty-state if no session is selected
+            if (!currentSessionId) {
+                document.getElementById('empty-state').classList.remove('hidden');
+            } else {
+                ['workspace-header', 'workspace-content', 'workspace-input-area'].forEach(id => {
+                    document.getElementById(id)?.classList.remove('hidden');
+                });
+            }
+        }
+
+        async function fetchPhones() {
+            const list = document.getElementById('phones-list');
+            try {
+                const res = await fetch('/api/phones');
+                const phones = await res.json();
+                if (!phones.length) {
+                    list.innerHTML = '<div class="text-center t-text-muted text-sm py-8">No authorized numbers yet. Add one above!</div>';
+                    return;
+                }
+                list.innerHTML = '';
+                phones.forEach(p => {
+                    const row = document.createElement('div');
+                    row.className = 't-card border rounded-xl px-4 py-3 flex items-center justify-between gap-3';
+                    row.style.borderColor = 'rgba(50,73,215,0.15)';
+                    row.innerHTML = `
+                        <div class="flex-1 min-w-0">
+                            <div class="font-mono text-sm t-text-primary font-semibold">${escapeHtml(p.phone)}</div>
+                            <div class="text-xs t-text-muted">${escapeHtml(p.label || 'No label')} &bull; Added ${new Date(p.added_at).toLocaleDateString()}</div>
+                        </div>
+                        <div class="flex items-center gap-2 shrink-0">
+                            <button onclick="pingPhone('${escapeHtml(p.phone)}')" title="Send verification ping"
+                                class="px-3 py-1.5 text-xs font-semibold rounded-lg border transition-all cursor-pointer hover:bg-emerald-500/10 hover:border-emerald-400 hover:text-emerald-400 t-text-secondary"
+                                style="border-color:rgba(50,73,215,0.2);">📨 Ping</button>
+                            <button onclick="removePhone('${escapeHtml(p.phone)}')" title="Remove number"
+                                class="px-3 py-1.5 text-xs font-semibold rounded-lg border transition-all cursor-pointer hover:bg-red-500/10 hover:border-red-400 hover:text-red-400 t-text-secondary"
+                                style="border-color:rgba(50,73,215,0.2);">🗑 Remove</button>
+                        </div>`;
+                    list.appendChild(row);
+                });
+            } catch (e) {
+                list.innerHTML = '<div class="text-center text-red-400 text-sm py-8">Failed to load phones.</div>';
+            }
+        }
+
+        async function addPhone() {
+            const phone = document.getElementById('new-phone-number').value.trim();
+            const label = document.getElementById('new-phone-label').value.trim();
+            if (!phone) return alert('Please enter a phone number.');
+            try {
+                const res = await fetch('/api/phones', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ phone, label })
+                });
+                const data = await res.json();
+                if (data.error) return alert('Error: ' + data.error);
+                document.getElementById('new-phone-number').value = '';
+                document.getElementById('new-phone-label').value = '';
+                fetchPhones();
+            } catch (e) {
+                alert('Network error: ' + e.message);
+            }
+        }
+
+        async function pingPhone(phone) {
+            try {
+                const res = await fetch(`/api/phones/${phone}/ping`, { method: 'POST' });
+                const data = await res.json();
+                if (data.error) return alert('Ping failed: ' + data.error);
+                alert(`✅ Verification ping sent to ${phone}!`);
+            } catch (e) {
+                alert('Network error: ' + e.message);
+            }
+        }
+
+        async function removePhone(phone) {
+            if (!confirm(`Remove ${phone} from the authorized list?`)) return;
+            try {
+                await fetch(`/api/phones/${phone}`, { method: 'DELETE' });
+                fetchPhones();
+            } catch (e) {
+                alert('Network error: ' + e.message);
+            }
+        }
     </script>
 </body>
 

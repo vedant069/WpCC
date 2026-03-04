@@ -7,7 +7,7 @@ import os from 'os';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-export function startDashboard(store, messageHandler, port = 18790) {
+export function startDashboard(store, messageHandler, port = 18790, wa = null) {
     const app = express();
 
     app.use(cors());
@@ -126,6 +126,51 @@ export function startDashboard(store, messageHandler, port = 18790) {
             });
 
             res.json({ success: true, message: 'Message dispatched' });
+        } catch (error) {
+            res.status(500).json({ error: error.message });
+        }
+    });
+
+    // --- Phone Management Endpoints ---
+
+    // List all allowed phone numbers
+    app.get('/api/phones', (req, res) => {
+        try {
+            res.json(store.getAllowedPhones());
+        } catch (error) {
+            res.status(500).json({ error: error.message });
+        }
+    });
+
+    // Add a phone number
+    app.post('/api/phones', (req, res) => {
+        try {
+            const { phone, label } = req.body;
+            if (!phone) return res.status(400).json({ error: 'phone is required' });
+            store.addAllowedPhone(String(phone).trim(), label || '');
+            res.json({ success: true, phone: String(phone).trim() });
+        } catch (error) {
+            res.status(500).json({ error: error.message });
+        }
+    });
+
+    // Remove a phone number
+    app.delete('/api/phones/:phone', (req, res) => {
+        try {
+            store.removeAllowedPhone(req.params.phone);
+            res.json({ success: true });
+        } catch (error) {
+            res.status(500).json({ error: error.message });
+        }
+    });
+
+    // Ping a phone number to verify it's reachable on WhatsApp
+    app.post('/api/phones/:phone/ping', async (req, res) => {
+        try {
+            const phone = req.params.phone;
+            if (!wa) return res.status(503).json({ error: 'WhatsApp bridge not available' });
+            await wa.sendMessage(phone, `👋 Hi! You've been added as an authorized user on the WhatsApp AI Engineer. You can now send coding tasks directly to this number.`);
+            res.json({ success: true, message: `Ping sent to ${phone}` });
         } catch (error) {
             res.status(500).json({ error: error.message });
         }

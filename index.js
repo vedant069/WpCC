@@ -22,7 +22,13 @@ if (orphans > 0) {
     console.log(`[Main] Cleaned up ${orphans} orphaned running sessions on startup.`);
 }
 
-const wa = new WhatsAppBridge();
+// Seed allowed phones from env config into DB (non-destructive; won't delete existing entries)
+if (config.ALLOWED_PHONES.length > 0) {
+    store.seedAllowedPhones(config.ALLOWED_PHONES);
+    console.log(`[Main] Seeded ${config.ALLOWED_PHONES.length} phone(s) from ALLOWED_PHONES env.`);
+}
+
+const wa = new WhatsAppBridge(store);
 const orchestrator = new Orchestrator();
 const claude = new ClaudeManager(store);
 
@@ -32,6 +38,19 @@ const claude = new ClaudeManager(store);
 // Both assistant_message and result can contain the same text.
 const lastSentContent = new Map();
 const webMutedSessions = new Set();
+
+// Per-phone serialization lock: ensures only ONE message per phone is processed at a time.
+// If a second message arrives while the first is processing, it queues behind it.
+const phoneProcessingQueues = new Map();
+
+async function serializedMessageHandler(args) {
+    const key = args.groupJid || args.phone;
+    const queue = phoneProcessingQueues.get(key) || Promise.resolve();
+    const next = queue.then(() => handleIncomingMessage(args)).catch(() => { });
+    phoneProcessingQueues.set(key, next);
+    await next;
+    if (phoneProcessingQueues.get(key) === next) phoneProcessingQueues.delete(key);
+}
 
 const WA_MAX = 3800; // safe WhatsApp message size
 
@@ -234,8 +253,8 @@ export async function handleIncomingMessage({ phone, text, pushName, groupJid })
                     target = store.getSession(ref) || store.getSession(ref.toUpperCase());
 
                     if (!target) {
-                        // Fallback: search globally across recent 50 sessions
-                        const sessions = store.getGlobalRecentSessions(50);
+                        // Fallback: search only this user's recent sessions (cross-user isolation)
+                        const sessions = store.getRecentSessions(threadKey, 50);
                         target = sessions.find(s =>
                             s.id.toLowerCase() === ref.toLowerCase() ||
                             s.task?.toLowerCase().includes(ref.toLowerCase())
@@ -389,17 +408,18 @@ export async function handleIncomingMessage({ phone, text, pushName, groupJid })
     }
 }
 
-wa.on('message', handleIncomingMessage);
+wa.on('message', serializedMessageHandler);
 
 // ── Start ─────────────────────────────────────────────────────
 
 wa.on('ready', () => {
     console.log('🤖 WhatsApp AI Engineer is ONLINE!');
-    console.log(`📱 Allowed phones: ${config.ALLOWED_PHONES.length > 0 ? config.ALLOWED_PHONES.join(', ') : 'ALL (no filter)'}`);
+    const allowedPhones = store.getAllowedPhones().map(r => r.phone);
+    console.log(`📱 Allowed phones: ${allowedPhones.length > 0 ? allowedPhones.join(', ') : 'OPEN (no filter)'}`);
     console.log(`🧠 Gemini model: ${config.GEMINI_MODEL}`);
     console.log(`🔧 Claude binary: ${config.CLAUDE_BIN}`);
 
-    startDashboard(store, handleIncomingMessage, 18790);
+    startDashboard(store, handleIncomingMessage, 18790, wa);
 });
 
 console.log('Starting WhatsApp AI Engineer...');

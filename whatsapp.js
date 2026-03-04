@@ -14,7 +14,7 @@ import { EventEmitter } from 'events';
 import config from './config.js';
 
 class WhatsAppBridge extends EventEmitter {
-    constructor() {
+    constructor(store = null) {
         super();
         this.sock = null;
         this.logger = pino({ level: 'error' });
@@ -23,6 +23,16 @@ class WhatsAppBridge extends EventEmitter {
         this.phoneToJid = new Map();  // phone → full JID for replies
         this.botNumber = null;        // bot's phone number
         this.botLid = null;           // bot's LID (multi-device identifier)
+        this.store = store;           // SessionStore for DB-backed allowlist
+        // Dedup: track processed message IDs to avoid double-processing
+        // (Baileys can fire messages.upsert twice for the same message on delivery ACK)
+        this._processedMsgIds = new Set();
+    }
+
+    _isAllowed(phone) {
+        if (this.store) return this.store.isPhoneAllowed(phone);
+        // Fallback to static config if no store is attached
+        return config.ALLOWED_PHONES.length === 0 || config.ALLOWED_PHONES.includes(phone);
     }
 
     async connect() {
@@ -90,6 +100,15 @@ class WhatsAppBridge extends EventEmitter {
                 if (msg.key.remoteJid === 'status@broadcast') continue;
                 if (msg.key.fromMe) continue;
 
+                // ── Dedup: skip if this exact message was already processed ──
+                const msgId = msg.key.id;
+                if (this._processedMsgIds.has(msgId)) {
+                    console.log(`[WhatsApp] Skipping duplicate message: ${msgId}`);
+                    continue;
+                }
+                this._processedMsgIds.add(msgId);
+                // Auto-expire after 5 min to prevent memory growth
+                setTimeout(() => this._processedMsgIds.delete(msgId), 5 * 60 * 1000);
                 const jid = msg.key.remoteJid;        // Full JID
                 const isGroup = jid.endsWith('@g.us');
 
@@ -149,7 +168,7 @@ class WhatsAppBridge extends EventEmitter {
                     // Sender allowlist: if group is in ALLOWED_GROUPS, trust all members
                     // (LIDs make per-sender phone matching unreliable in groups).
                     const groupIsAllowed = config.ALLOWED_GROUPS.includes(jid);
-                    if (!groupIsAllowed && config.ALLOWED_PHONES.length > 0 && !config.ALLOWED_PHONES.includes(senderPhone)) {
+                    if (!groupIsAllowed && !this._isAllowed(senderPhone)) {
                         console.log(`[WhatsApp] Group msg blocked (sender not in allowlist): ${senderPhone}`);
                         continue;
                     }
@@ -196,10 +215,11 @@ class WhatsAppBridge extends EventEmitter {
 
                 this.phoneToJid.set(phone, jid);
 
-                // Allowlist check
-                if (config.ALLOWED_PHONES.length > 0) {
-                    const isAllowed = config.ALLOWED_PHONES.includes(phone) ||
-                        [...this.lidToPhone.entries()].some(([lid, p]) => config.ALLOWED_PHONES.includes(p) && lid === idPart);
+                // Allowlist check (DB-backed, falls back to config)
+                {
+                    const resolvedPhone = (jidType === 's.whatsapp.net') ? phone : (this.lidToPhone.get(idPart) || phone);
+                    const isAllowed = this._isAllowed(resolvedPhone) ||
+                        [...this.lidToPhone.entries()].some(([lid, p]) => this._isAllowed(p) && lid === idPart);
                     if (!isAllowed) {
                         if (jidType === 'lid') {
                             console.log(`[WhatsApp] Allowing LID ${idPart} (cannot resolve to phone yet)`);
