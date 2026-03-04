@@ -70,8 +70,8 @@ echo "✅ Started PID=$!"
 
 sleep 3
 echo ""
-echo "=== Last 20 log lines ==="
-tail -20 /tmp/wa-engineer.log
+echo "=== Last 60 log lines ==="
+tail -60 /tmp/wa-engineer.log
 echo "========================="
 echo ""
 echo "To monitor logs live, run: tail -f /tmp/wa-engineer.log"
