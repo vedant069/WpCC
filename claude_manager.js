@@ -14,6 +14,8 @@
 import pty from 'node-pty';
 import { EventEmitter } from 'events';
 import config from './config.js';
+import fs from 'fs';
+import path from 'path';
 
 // One-line KB hint prepended to every task. Tells Claude where to find domain
 // docs without --add-dir loading everything into context upfront.
@@ -35,7 +37,7 @@ class ClaudeManager extends EventEmitter {
      * Claude creates its OWN session ID (returned in stream-json result event),
      * which we store in SQLite for future --resume calls.
      */
-    async startSession(userPhone, task, workingDir) {
+    async startSession(userPhone, task, workingDir, imagePath = null) {
         const sessionId = `WA-${Date.now().toString(36)}`;
         const dir = workingDir || config.DEFAULT_WORKING_DIR;
 
@@ -43,7 +45,7 @@ class ClaudeManager extends EventEmitter {
         this.store.createSession(sessionId, userPhone, task, null, dir);
         this.store.addMessage(sessionId, 'user', task);
 
-        this._spawnNew(sessionId, task, dir);
+        this._spawnNew(sessionId, task, dir, imagePath);
         return { sessionId };
     }
 
@@ -51,7 +53,7 @@ class ClaudeManager extends EventEmitter {
      * Resume an existing session with a follow-up message.
      * Uses Claude's --resume <claude_session_id> so full history is preserved by Claude.
      */
-    async resumeSession(sessionId, followUp) {
+    async resumeSession(sessionId, followUp, imagePath = null) {
         const session = this.store.getSession(sessionId);
         if (!session) throw new Error(`Session ${sessionId} not found`);
         if (!session.claude_session_id) {
@@ -64,7 +66,7 @@ class ClaudeManager extends EventEmitter {
         this.store.addMessage(sessionId, 'user', followUp);
         // Reopen the thread so subsequent messages go to this session
         this.store.updateSession(sessionId, { status: 'running', thread_open: 1 });
-        this._spawnResume(sessionId, session.claude_session_id, followUp, session.working_dir, session.cost_usd || 0);
+        this._spawnResume(sessionId, session.claude_session_id, followUp, session.working_dir, session.cost_usd || 0, imagePath);
         return { sessionId };
     }
 
@@ -111,14 +113,18 @@ class ClaudeManager extends EventEmitter {
     // ── Internal: spawn new session (execute immediately) ─────
 
 
-    _spawnNew(sessionId, prompt, workingDir) {
+    _spawnNew(sessionId, prompt, workingDir, imagePath = null) {
+        const imageRef = this._prepareImage(imagePath, workingDir);
+        const fullPrompt = imageRef
+            ? `${KB_HINT}\n\n${imageRef}\n\n${prompt}`
+            : `${KB_HINT}\n\n${prompt}`;
         const args = [
             '--print',
             '--model', 'opus',
             '--output-format', 'stream-json',
             '--verbose',
             '--dangerously-skip-permissions',
-            `${KB_HINT}\n\n${prompt}`
+            fullPrompt
         ];
 
         console.log(`[Claude] NEW session ${sessionId} | cwd: ${workingDir}`);
@@ -144,7 +150,9 @@ class ClaudeManager extends EventEmitter {
 
     // ── Internal: resume existing session ─────────────────────
 
-    _spawnResume(sessionId, claudeSessionId, followUp, workingDir, baseCost = 0) {
+    _spawnResume(sessionId, claudeSessionId, followUp, workingDir, baseCost = 0, imagePath = null) {
+        const imageRef = this._prepareImage(imagePath, workingDir);
+        const fullFollowUp = imageRef ? `${imageRef}\n\n${followUp}` : followUp;
         const args = [
             '--resume', claudeSessionId,
             '--print',
@@ -152,11 +160,30 @@ class ClaudeManager extends EventEmitter {
             '--output-format', 'stream-json',
             '--verbose',
             '--dangerously-skip-permissions',
-            followUp
+            fullFollowUp
         ];
 
         console.log(`[Claude] RESUME session ${sessionId} | claude_id: ${claudeSessionId} | base_cost: $${baseCost}`);
         this._runPty(sessionId, config.CLAUDE_BIN, args, workingDir, baseCost);
+    }
+
+    /**
+     * Copy image to the working directory and return a reference string for the prompt.
+     * Returns null if no image provided.
+     */
+    _prepareImage(imagePath, workingDir) {
+        if (!imagePath || !fs.existsSync(imagePath)) return null;
+        try {
+            const destName = `context-image-${Date.now()}${path.extname(imagePath)}`;
+            const dest = path.join(workingDir || config.DEFAULT_WORKING_DIR, destName);
+            fs.copyFileSync(imagePath, dest);
+            // Clean up the tmp source
+            try { fs.unlinkSync(imagePath); } catch (_) { }
+            return `[Image attached — file saved at: ${dest}. Please read/view this image as part of the task.]`;
+        } catch (err) {
+            console.error(`[Claude] Failed to prepare image: ${err.message}`);
+            return null;
+        }
     }
 
     // ── Internal: PTY runner ───────────────────────────────────

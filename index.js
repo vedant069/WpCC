@@ -150,7 +150,7 @@ claude.on('session_error', async ({ sessionId, error }) => {
 
 // ── WhatsApp message handler ──────────────────────────────────
 
-export async function handleIncomingMessage({ phone, text, pushName, groupJid }) {
+export async function handleIncomingMessage({ phone, text, pushName, groupJid, imagePath = null }) {
     try {
         const isWeb = pushName === 'Web Dashboard';
         // Use groupJid as the session owner if in a group, otherwise use personal phone
@@ -211,7 +211,7 @@ export async function handleIncomingMessage({ phone, text, pushName, groupJid })
                 // Close any existing thread before starting fresh
                 if (currentThread) store.closeThread(threadKey);
                 const task = intent.task || text;
-                const { sessionId } = await claude.startSession(threadKey, task);
+                const { sessionId } = await claude.startSession(threadKey, task, null, imagePath);
 
                 if (isWeb) {
                     webMutedSessions.add(sessionId);
@@ -313,7 +313,7 @@ export async function handleIncomingMessage({ phone, text, pushName, groupJid })
 
                 // When resuming, we can optionally credit the individual user who sent the follow-up
                 const followUpText = groupJid ? `[From ${pushName || phone}]: ${intent.task || text}` : (intent.task || text);
-                await claude.resumeSession(target.id, followUpText);
+                await claude.resumeSession(target.id, followUpText, imagePath);
                 return { sessionId: target.id };
             }
 

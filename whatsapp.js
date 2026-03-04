@@ -7,11 +7,14 @@ import makeWASocket, {
     DisconnectReason,
     makeCacheableSignalKeyStore,
     fetchLatestBaileysVersion,
+    downloadMediaMessage,
 } from '@whiskeysockets/baileys';
 import pino from 'pino';
 import qrcode from 'qrcode-terminal';
 import { EventEmitter } from 'events';
 import config from './config.js';
+import fs from 'fs';
+import path from 'path';
 
 class WhatsAppBridge extends EventEmitter {
     constructor(store = null) {
@@ -230,14 +233,30 @@ class WhatsAppBridge extends EventEmitter {
                     }
                 }
 
+                // Extract text — from plain DM, extended text, or image caption
                 const text = msg.message?.conversation
                     || msg.message?.extendedTextMessage?.text
+                    || msg.message?.imageMessage?.caption
                     || '';
 
-                if (!text.trim()) continue;
+                // Handle image messages — download and save to /tmp
+                let imagePath = null;
+                if (msg.message?.imageMessage) {
+                    try {
+                        const buffer = await downloadMediaMessage(msg, 'buffer', {});
+                        const ext = msg.message.imageMessage.mimetype?.split('/')?.[1]?.split(';')?.[0] || 'jpg';
+                        imagePath = `/tmp/wa-img-${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+                        fs.writeFileSync(imagePath, buffer);
+                        console.log(`[WhatsApp] Image saved: ${imagePath}`);
+                    } catch (err) {
+                        console.error(`[WhatsApp] Failed to download image: ${err.message}`);
+                    }
+                }
 
-                console.log(`[WhatsApp] DM from ${phone} (${msg.pushName || 'unknown'}): ${text.slice(0, 100)}`);
-                this.emit('message', { phone, text, raw: msg, pushName: msg.pushName });
+                if (!text.trim() && !imagePath) continue;
+
+                console.log(`[WhatsApp] DM from ${phone} (${msg.pushName || 'unknown'}): ${text.slice(0, 100)}${imagePath ? ' [+image]' : ''}`);
+                this.emit('message', { phone, text, raw: msg, pushName: msg.pushName, imagePath });
             }
         });
     }

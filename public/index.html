@@ -583,26 +583,52 @@
             <!-- Sticky Input Area -->
             <div id="workspace-input-area"
                 class="absolute bottom-0 left-0 right-0 p-3 md:p-6 t-input-area-bg pt-6 md:pt-12 z-30 hidden pointer-events-none">
-                <div
-                    class="max-w-4xl mx-auto relative rounded-xl shadow-2xl t-card pointer-events-auto border focus-within:border-[#3249d7]/50 focus-within:ring-2 focus-within:ring-[#3249d7]/20 transition-all">
-                    <textarea id="chat-textarea" rows="1" placeholder="Type a message..."
-                        class="w-full bg-transparent px-3 md:px-5 py-3 md:py-4 pr-12 md:pr-14 resize-none outline-none overflow-y-auto max-h-36 md:max-h-48 leading-relaxed font-medium text-sm md:text-base t-text-primary"
-                        style="color: inherit;"></textarea>
-
-                    <button id="chat-send-btn"
-                        class="absolute right-2 md:right-3 bottom-2 md:bottom-2.5 p-2 bg-[#3249d7] hover:bg-[#2a3dbf] text-white rounded-lg transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer">
-                        <svg class="w-4 h-4 md:w-5 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"
-                            stroke-width="2">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8">
-                            </path>
-                        </svg>
-                    </button>
-                </div>
-                <div class="max-w-4xl mx-auto mt-2 text-center pointer-events-auto">
-                    <span
-                        class="text-[10px] font-medium t-text-muted uppercase tracking-widest hidden sm:inline-block t-badge px-3 py-1 rounded-full border"
-                        style="border-color: rgba(50,73,215,0.15);">Shift + Enter for newline. Press Enter to
-                        send.</span>
+                <div class="max-w-4xl mx-auto">
+                    <!-- Image Preview Chip -->
+                    <div id="image-preview-bar" class="hidden flex items-center gap-2 mb-2 pointer-events-auto">
+                        <div class="flex items-center gap-2 t-card border rounded-lg px-3 py-1.5 text-xs t-text-secondary"
+                            style="border-color:rgba(50,73,215,0.25);">
+                            <img id="image-preview-thumb" src="" alt="preview" class="w-8 h-8 object-cover rounded">
+                            <span id="image-preview-name" class="max-w-[160px] truncate">image.png</span>
+                            <button onclick="clearImage()"
+                                class="ml-1 text-red-400 hover:text-red-300 cursor-pointer text-base leading-none">&times;</button>
+                        </div>
+                        <span class="text-[10px] t-text-muted">Image will be sent with your message</span>
+                    </div>
+                    <!-- Input Row -->
+                    <div
+                        class="relative rounded-xl shadow-2xl t-card pointer-events-auto border focus-within:border-[#3249d7]/50 focus-within:ring-2 focus-within:ring-[#3249d7]/20 transition-all">
+                        <!-- Hidden file input -->
+                        <input id="image-file-input" type="file" accept="image/*" class="hidden"
+                            onchange="handleImageFile(this.files[0])">
+                        <textarea id="chat-textarea" rows="1" placeholder="Type a message… or paste/drop an image"
+                            class="w-full bg-transparent px-3 md:px-5 py-3 md:py-4 pr-20 md:pr-24 resize-none outline-none overflow-y-auto max-h-36 md:max-h-48 leading-relaxed font-medium text-sm md:text-base t-text-primary"
+                            style="color: inherit;"></textarea>
+                        <!-- Attach Image Button -->
+                        <button onclick="document.getElementById('image-file-input').click()" title="Attach image"
+                            class="absolute right-10 md:right-12 bottom-2 md:bottom-2.5 p-2 t-text-muted hover:text-[#3249d7] rounded-lg transition-colors cursor-pointer">
+                            <svg class="w-4 h-4 md:w-5 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                                stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                    d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                            </svg>
+                        </button>
+                        <button id="chat-send-btn"
+                            class="absolute right-2 md:right-3 bottom-2 md:bottom-2.5 p-2 bg-[#3249d7] hover:bg-[#2a3dbf] text-white rounded-lg transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer">
+                            <svg class="w-4 h-4 md:w-5 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                                stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                    d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8">
+                                </path>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="mt-2 text-center pointer-events-auto">
+                        <span
+                            class="text-[10px] font-medium t-text-muted uppercase tracking-widest hidden sm:inline-block t-badge px-3 py-1 rounded-full border"
+                            style="border-color: rgba(50,73,215,0.15);">Shift + Enter for newline. Press Enter to send.
+                            Ctrl+V to paste image.</span>
+                    </div>
                 </div>
             </div>
 
@@ -613,6 +639,8 @@
         let currentSessionId = null;
         let isCreatingNew = false;
         let loopInterval = null;
+        let pendingImageToken = null; // token returned by /api/upload-image
+        let pendingImageDataUrl = null; // for preview only
 
         // Theme Management
         function getTheme() {
@@ -920,7 +948,7 @@
 
         async function sendMessage() {
             const val = textarea.value.trim();
-            if (!val) return;
+            if (!val && !pendingImageToken) return;   // need text OR image
 
             const phone = document.getElementById('user-phone').value;
             textarea.value = '';
@@ -941,10 +969,13 @@
                         </div>
                     `;
 
+                    const imageToken = pendingImageToken;
+                    clearImage();
+
                     const resAPI = await fetch('/api/sessions/start', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ phone, text: val })
+                        body: JSON.stringify({ phone, text: val, imageToken })
                     });
                     const result = await resAPI.json();
 
@@ -973,10 +1004,13 @@
                         content.scrollTo({ top: content.scrollHeight, behavior: 'smooth' });
                     }
 
+                    const imageToken = pendingImageToken;
+                    clearImage();
+
                     await fetch(`/api/sessions/${currentSessionId}/message`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ phone, text: `[resume ${currentSessionId}] ${val}` })
+                        body: JSON.stringify({ phone, text: `[resume ${currentSessionId}] ${val || '(image)'}`, imageToken })
                     });
 
                     pollMessages();
@@ -995,6 +1029,53 @@
                 .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
                 .replace(/"/g, "&quot;").replace(/'/g, "&#039;");
         }
+
+        // ── Image Handling ────────────────────────────────────────
+        async function handleImageFile(file) {
+            if (!file || !file.type.startsWith('image/')) return;
+            // Show preview immediately
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                pendingImageDataUrl = e.target.result;
+                document.getElementById('image-preview-thumb').src = e.target.result;
+                document.getElementById('image-preview-name').textContent = file.name || 'image';
+                document.getElementById('image-preview-bar').classList.remove('hidden');
+            };
+            reader.readAsDataURL(file);
+            // Upload to server
+            try {
+                const buf = await file.arrayBuffer();
+                const res = await fetch('/api/upload-image', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/octet-stream', 'X-Mime-Type': file.type },
+                    body: buf
+                });
+                const data = await res.json();
+                if (data.token) pendingImageToken = data.token;
+                else console.error('Image upload failed', data);
+            } catch (e) {
+                console.error('Image upload error', e);
+            }
+        }
+
+        function clearImage() {
+            pendingImageToken = null;
+            pendingImageDataUrl = null;
+            document.getElementById('image-preview-bar').classList.add('hidden');
+            document.getElementById('image-preview-thumb').src = '';
+            document.getElementById('image-file-input').value = '';
+        }
+
+        // Clipboard paste support — Ctrl+V image into the textarea area
+        document.addEventListener('paste', (e) => {
+            if (!document.getElementById('workspace-input-area').classList.contains('hidden')) {
+                const item = [...(e.clipboardData?.items || [])].find(i => i.type.startsWith('image/'));
+                if (item) {
+                    e.preventDefault();
+                    handleImageFile(item.getAsFile());
+                }
+            }
+        });
 
         // CSS animations
         const animStyle = document.createElement('style');

@@ -3,9 +3,23 @@ import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import os from 'os';
+import fs from 'fs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+// Temp store: token → imagePath (auto-expires after 5 min)
+const pendingImages = new Map();
+function storePendingImage(imagePath) {
+    const token = `img-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    pendingImages.set(token, imagePath);
+    setTimeout(() => {
+        const p = pendingImages.get(token);
+        if (p) { try { fs.unlinkSync(p); } catch (_) { } }
+        pendingImages.delete(token);
+    }, 5 * 60 * 1000);
+    return token;
+}
 
 export function startDashboard(store, messageHandler, port = 18790, wa = null) {
     const app = express();
@@ -90,11 +104,16 @@ export function startDashboard(store, messageHandler, port = 18790, wa = null) {
                 ? String(text)
                 : `[start fresh] ${String(text)}`;
 
+            // Resolve any attached image
+            const imagePath = req.body.imageToken ? pendingImages.get(req.body.imageToken) || null : null;
+            if (req.body.imageToken) pendingImages.delete(req.body.imageToken);
+
             console.log(`[Dashboard] Dispatching START_SESSION for ${phone} with task: ${startInstruction}`);
             const result = await messageHandler({
                 phone: String(phone),
                 text: startInstruction,
-                pushName: 'Web Dashboard'
+                pushName: 'Web Dashboard',
+                imagePath
             });
 
             console.log(`[Dashboard] messageHandler completed with result:`, result);
@@ -116,16 +135,35 @@ export function startDashboard(store, messageHandler, port = 18790, wa = null) {
             const session = store.getSession(sessionId);
             if (!session) return res.status(404).json({ error: 'Session not found' });
 
-            // To resume exactly that session, we inject the session ID into the text so the fast-path/orchestrator picks it up
+            // Resolve any attached image
+            const imagePath = req.body.imageToken ? pendingImages.get(req.body.imageToken) || null : null;
+            if (req.body.imageToken) pendingImages.delete(req.body.imageToken);
+
             const resumeInstruction = `[resume ${sessionId}] ${text}`;
 
             await messageHandler({
                 phone: String(phone),
                 text: resumeInstruction,
-                pushName: 'Web Dashboard'
+                pushName: 'Web Dashboard',
+                imagePath
             });
 
             res.json({ success: true, message: 'Message dispatched' });
+        } catch (error) {
+            res.status(500).json({ error: error.message });
+        }
+    });
+
+    // --- Image Upload ---
+
+    app.post('/api/upload-image', express.raw({ type: 'application/octet-stream', limit: '20mb' }), (req, res) => {
+        try {
+            const mimeType = req.headers['x-mime-type'] || 'image/png';
+            const ext = mimeType.split('/')[1]?.split(';')[0] || 'png';
+            const imagePath = `/tmp/dash-img-${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+            fs.writeFileSync(imagePath, req.body);
+            const token = storePendingImage(imagePath);
+            res.json({ success: true, token });
         } catch (error) {
             res.status(500).json({ error: error.message });
         }
