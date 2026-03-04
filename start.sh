@@ -18,6 +18,26 @@ fi
 if [ -f package.json ]; then
     echo "📦 Checking dependencies..."
     npm install --silent
+
+    # node-pty is a native C++ addon — it requires build tools (python, make, gcc/MSVC).
+    # Rebuild explicitly to catch failures early with a clear message.
+    echo "🔧 Building native modules (node-pty)..."
+    if ! npm rebuild node-pty --silent 2>/dev/null; then
+        echo ""
+        echo "❌ ERROR: Failed to build node-pty native addon."
+        echo "   node-pty requires build tools. Please install them first:"
+        echo ""
+        echo "   Linux / macOS:"
+        echo "     sudo apt-get install -y python3 make g++   (Debian/Ubuntu)"
+        echo "     xcode-select --install                      (macOS)"
+        echo ""
+        echo "   Windows (run as Admin in PowerShell):"
+        echo "     npm install -g windows-build-tools"
+        echo "     npm install -g node-gyp"
+        echo ""
+        exit 1
+    fi
+    echo "✅ Dependencies ready."
 fi
 
 # Auto-sync Knowledge Base from GitHub if configured
