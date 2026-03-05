@@ -41,6 +41,10 @@ const config = {
     SMTP_SECURE: process.env.SMTP_SECURE === 'true', // true for port 465
     SMTP_USER: process.env.SMTP_USER || '',
     SMTP_PASS: process.env.SMTP_PASS || '',
+
+    // Base path when served under a sub-path (e.g., /sessions)
+    // Leave empty '' when served at root /
+    BASE_PATH: (process.env.BASE_PATH || '').replace(/\/$/, ''),
 };
 
 export default config;

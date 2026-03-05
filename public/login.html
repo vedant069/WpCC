@@ -296,7 +296,9 @@
                     return;
                 }
                 showSuccess('Logged in! Redirecting...');
-                setTimeout(() => window.location.href = '/', 800);
+                // Navigate to base path dynamically (works under /sessions/ or /)
+                const basePath = window.location.pathname.replace(/\/[^/]*\.html$/, '/').replace(/\/$/, '') || '/';
+                setTimeout(() => window.location.href = basePath || '/', 800);
             } catch (e) {
                 showError('Network error. Please try again.');
                 btn.disabled = false;

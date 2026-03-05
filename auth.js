@@ -100,6 +100,6 @@ export function optionalAuth(req, res, next) {
 
 function _deny(req, res) {
     const acceptsHtml = req.headers.accept?.includes('text/html');
-    if (acceptsHtml) return res.redirect('/login.html');
+    if (acceptsHtml) return res.redirect(config.BASE_PATH + '/login.html');
     return res.status(401).json({ error: 'Unauthorized. Please log in.' });
 }
