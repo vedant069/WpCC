@@ -45,6 +45,9 @@ const config = {
     // Base path when served under a sub-path (e.g., /sessions)
     // Leave empty '' when served at root /
     BASE_PATH: (process.env.BASE_PATH || '').replace(/\/$/, ''),
+
+    // Set to false to disable WhatsApp entirely (email-only mode)
+    WHATSAPP_ENABLED: process.env.WHATSAPP_ENABLED !== 'false',
 };
 
 export default config;

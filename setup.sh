@@ -180,13 +180,13 @@ configure_access_mode() {
     MODE=$(gum choose "WhatsApp (QR scan)" "Email (dashboard only)" "Both")
     case "$MODE" in
         "WhatsApp (QR scan)"|"Both")
+            echo "WHATSAPP_ENABLED=true" >> .env
             ok "WhatsApp mode: Bot will display a QR code on first start. Scan it to connect."
             echo -e "${YELLOW}ℹ  After setup, run ./start.sh and scan the QR code displayed in the logs.${NC}"
             ;;
-    esac
-    case "$MODE" in
-        "Email (dashboard only)"|"Both")
-            ok "Email mode: Users login via OTP email at /login.html on the dashboard."
+        "Email (dashboard only)")
+            echo "WHATSAPP_ENABLED=false" >> .env
+            ok "Email mode: Users login via OTP email at /login.html. No QR code required."
             ;;
     esac
 }

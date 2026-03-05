@@ -28,8 +28,8 @@ if (config.ALLOWED_PHONES.length > 0) {
     console.log(`[Main] Seeded ${config.ALLOWED_PHONES.length} phone(s) from ALLOWED_PHONES env.`);
 }
 
-const wa = new WhatsAppBridge(store);
-const orchestrator = new Orchestrator();
+const wa = config.WHATSAPP_ENABLED !== false ? new WhatsAppBridge(store) : null;
+const orchestrator = config.WHATSAPP_ENABLED !== false ? new Orchestrator() : null;
 const claude = new ClaudeManager(store);
 
 // ── Helpers ──────────────────────────────────────────────────
@@ -422,22 +422,33 @@ export async function handleIncomingMessage({ phone, text, pushName, groupJid, i
     }
 }
 
-wa.on('message', serializedMessageHandler);
+if (wa) wa.on('message', serializedMessageHandler);
 
-// ── Start ─────────────────────────────────────────────────────
+// ── Start ─────────────────────────────────────────────────
 
-wa.on('ready', () => {
-    console.log('🤖 WhatsApp AI Engineer is ONLINE!');
+if (config.WHATSAPP_ENABLED === false) {
+    // Email-only mode: skip WhatsApp, start dashboard immediately
+    console.log('Starting WhatsApp AI Engineer (Email-only mode)...');
     const allowedPhones = store.getAllowedPhones().map(r => r.phone);
-    console.log(`📱 Allowed phones: ${allowedPhones.length > 0 ? allowedPhones.join(', ') : 'OPEN (no filter)'}`);
+    console.log(`📱 Allowed phones: ${allowedPhones.length > 0 ? allowedPhones.join(', ') : 'none'}`);
     console.log(`🧠 Gemini model: ${config.GEMINI_MODEL}`);
     console.log(`🔧 Claude binary: ${config.CLAUDE_BIN}`);
+    startDashboard(store, handleIncomingMessage, 18790, null);
+    console.log('🌐 Dashboard running at http://localhost:18790');
+} else {
+    // WhatsApp mode: wait for QR scan
+    wa.on('ready', () => {
+        console.log('🤖 WhatsApp AI Engineer is ONLINE!');
+        const allowedPhones = store.getAllowedPhones().map(r => r.phone);
+        console.log(`📱 Allowed phones: ${allowedPhones.length > 0 ? allowedPhones.join(', ') : 'OPEN (no filter)'}`);
+        console.log(`🧠 Gemini model: ${config.GEMINI_MODEL}`);
+        console.log(`🔧 Claude binary: ${config.CLAUDE_BIN}`);
+        startDashboard(store, handleIncomingMessage, 18790, wa);
+    });
 
-    startDashboard(store, handleIncomingMessage, 18790, wa);
-});
-
-console.log('Starting WhatsApp AI Engineer...');
-wa.connect().catch(err => {
-    console.error('Failed to start:', err);
-    process.exit(1);
-});
+    console.log('Starting WhatsApp AI Engineer...');
+    wa.connect().catch(err => {
+        console.error('Failed to start:', err);
+        process.exit(1);
+    });
+}
