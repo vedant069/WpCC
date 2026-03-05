@@ -76,7 +76,7 @@ check_claude() {
     if [ -z "$CLAUDE_BIN" ]; then
         warn "Claude Code not found in PATH."
         gum confirm "Install Claude Code now?" && {
-            curl -fsSL https://claude.ai/install.sh | sh || fail "Failed to install Claude Code"
+            curl -fsSL https://claude.ai/install.sh | bash || npm install -g @anthropic-ai/claude-code 2>/dev/null || fail "Failed to install Claude Code. Please install manually: https://claude.ai/install"
             CLAUDE_BIN=$(which claude 2>/dev/null || echo "$HOME/.local/bin/claude")
         } || fail "Claude Code is required. Please install it manually: https://claude.ai/install"
     fi
