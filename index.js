@@ -1,5 +1,5 @@
 // ============================================================
-// index.js — WhatsApp AI Engineer Entry Point
+// index.js — OliBot Entry Point
 // ============================================================
 //
 // Ties together:
@@ -342,7 +342,7 @@ export async function handleIncomingMessage({ isWeb: explicitIsWeb, phone, text,
                 // Reroute replies to the person who is resuming this session, and add them as a subscriber
                 let subs = target.subscribers_arr || [target.user_phone];
                 if (!subs.includes(threadKey)) subs.push(threadKey);
-                store.updateSession(target.id, { user_phone: threadKey, subscribers_arr: subs });
+                store.updateSession(target.id, { user_phone: threadKey, subscribers: JSON.stringify(subs) });
 
                 // Fetch recent messages to generate an automatic recap of progress
                 const messages = store.getMessages(target.id, 10);
@@ -454,7 +454,7 @@ if (wa) wa.on('message', serializedMessageHandler);
 
 if (config.WHATSAPP_ENABLED === false) {
     // Email-only mode: skip WhatsApp, start dashboard immediately
-    console.log('Starting WhatsApp AI Engineer (Email-only mode)...');
+    console.log('Starting OliBot (Email-only mode)...');
     const allowedPhones = store.getAllowedPhones().map(r => r.phone);
     console.log(`📱 Allowed phones: ${allowedPhones.length > 0 ? allowedPhones.join(', ') : 'none'}`);
     console.log(`🧠 Gemini model: ${config.GEMINI_MODEL}`);
@@ -464,7 +464,7 @@ if (config.WHATSAPP_ENABLED === false) {
 } else {
     // WhatsApp mode: wait for QR scan
     wa.on('ready', () => {
-        console.log('🤖 WhatsApp AI Engineer is ONLINE!');
+        console.log('🤖 OliBot is ONLINE!');
         const allowedPhones = store.getAllowedPhones().map(r => r.phone);
         console.log(`📱 Allowed phones: ${allowedPhones.length > 0 ? allowedPhones.join(', ') : 'OPEN (no filter)'}`);
         console.log(`🧠 Gemini model: ${config.GEMINI_MODEL}`);
@@ -472,7 +472,7 @@ if (config.WHATSAPP_ENABLED === false) {
         startDashboard(store, handleIncomingMessage, 18790, wa);
     });
 
-    console.log('Starting WhatsApp AI Engineer...');
+    console.log('Starting OliBot...');
     wa.connect().catch(err => {
         console.error('Failed to start:', err);
         process.exit(1);

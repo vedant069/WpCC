@@ -20,7 +20,7 @@ function getTransporter() {
     return _transporter;
 }
 
-const FROM = `"WhatsApp AI Engineer" <${config.SMTP_USER}>`;
+const FROM = `"OliBot" <${config.SMTP_USER}>`;
 
 // ── Emails ────────────────────────────────────────────────────
 
@@ -29,10 +29,10 @@ export async function sendWelcomeEmail(email, displayName, password) {
     const loginUrl = 'https://dev.pluginlive.com/sessions/login.html';
     await getTransporter().sendMail({
         from: FROM, to: email,
-        subject: `You've been added to WhatsApp AI Engineer`,
+        subject: `You've been added to OliBot`,
         html: `
         <div style="font-family:Inter,Arial,sans-serif;max-width:480px;margin:0 auto;padding:32px 24px;background:#f9f9fb;border-radius:12px;">
-            <h1 style="color:#3249d7;font-size:22px;margin:0 0 6px;">WhatsApp AI Engineer</h1>
+            <h1 style="color:#3249d7;font-size:22px;margin:0 0 6px;">OliBot</h1>
             <p style="color:#555;margin:0 0 28px;font-size:14px;">You've been added as a team member.</p>
             <div style="background:#fff;border-radius:10px;padding:24px;border:1px solid #e8eaf6;">
                 <p style="color:#555;font-size:14px;margin:0 0 8px;">Hello <strong>${displayName}</strong>,</p>
@@ -45,7 +45,7 @@ export async function sendWelcomeEmail(email, displayName, password) {
                 <p style="color:#e53935;font-size:12px;margin:16px 0 0;">Please keep this password safe. Contact your admin to reset it.</p>
             </div>
         </div>`,
-        text: `Hello ${displayName},\n\nYou have been added to WhatsApp AI Engineer.\n\nEmail: ${email}\nPassword: ${password}\n\nLogin here: ${loginUrl}`,
+        text: `Hello ${displayName},\n\nYou have been added to OliBot.\n\nEmail: ${email}\nPassword: ${password}\n\nLogin here: ${loginUrl}`,
     });
 }
 

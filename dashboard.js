@@ -299,7 +299,7 @@ export function startDashboard(store, messageHandler, port = 18790, wa = null) {
     app.post('/api/phones/:phone/ping', requireAuth, requireAdmin, async (req, res) => {
         try {
             if (!wa) return res.status(503).json({ error: 'WhatsApp not connected' });
-            await wa.sendMessage(req.params.phone, `👋 You've been added to WhatsApp AI Engineer.`);
+            await wa.sendMessage(req.params.phone, `👋 You've been added to OliBot.`);
             res.json({ success: true });
         } catch (err) { res.status(500).json({ error: err.message }); }
     });
