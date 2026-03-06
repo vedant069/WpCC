@@ -51,9 +51,8 @@ export function startDashboard(store, messageHandler, port = 18790, wa = null) {
     });
 
     app.get('/api/me', requireAuth, (req, res) => {
-        const user = store.getUserById(req.user.id);
-        if (!user) return res.status(404).json({ error: 'User not found' });
-        res.json({ id: user.id, email: user.email, phone: user.phone, displayName: user.display_name, isAdmin: !!user.is_admin, role: user.role });
+        const user = req.user;
+        res.json({ success: true, user, whatsappEnabled: config.WHATSAPP_ENABLED });
     });
 
     // ── Stats ─────────────────────────────────────────────────

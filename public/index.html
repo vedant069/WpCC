@@ -952,7 +952,7 @@
             } catch (err) { }
         }
 
-        function startNewSessionView() {
+        async function startNewSessionView() {
             closeSidebar();
             currentSessionId = null;
             isCreatingNew = true;
@@ -968,25 +968,51 @@
             document.getElementById('workspace-status-dot').className = "w-2.5 h-2.5 rounded-full animate-pulse shadow-[0_0_8px_rgba(50,73,215,0.6)]";
             document.getElementById('workspace-status-dot').style.background = '#3249d7';
 
-            const phoneOptions = document.getElementById('user-phone').innerHTML;
             const content = document.getElementById('workspace-content');
-            content.innerHTML = `
-                <div class="max-w-3xl mx-auto py-8 sm:py-12 md:py-16 text-center px-4 animate-[fadeIn_0.5s_ease-out]">
-                    <div class="w-14 h-14 sm:w-20 sm:h-20 rounded-2xl sm:rounded-3xl mx-auto flex items-center justify-center mb-6 border shadow-2xl" style="background: rgba(50,73,215,0.1); border-color: rgba(50,73,215,0.2); box-shadow: 0 25px 50px rgba(50,73,215,0.1); color: #3249d7;">
-                        <svg class="w-7 h-7 sm:w-10 sm:h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+            if (!window.whatsappEnabled) {
+                // Email-only mode: Hide the phone selector entirely
+                content.innerHTML = `
+                    <div class="max-w-3xl mx-auto py-16 text-center px-4">
+                        <div class="inline-flex items-center justify-center w-20 h-20 rounded-2xl mb-8 border shadow-sm t-border t-bg-subtle">
+                            <svg class="w-10 h-10 t-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                        </div>
+                        <h2 class="text-3xl font-bold t-text-primary mb-4" style="font-family: Poppins, sans-serif;">Let's build something.</h2>
+                        <p class="t-text-secondary text-lg mb-10 max-w-xl mx-auto">Describe your task. Gemini will plan it, spawn a Claude Code session, and execute the changes on the server.</p>
+                        
+                        <div class="max-w-md mx-auto t-bg-subtle border t-border rounded-xl p-5 text-left bg-white/50 backdrop-blur-sm">
+                            <p class="text-xs text-gray-500 italic mt-1">This session will be exclusively mapped to your email.</p>
+                        </div>
                     </div>
-                    <h2 class="text-xl sm:text-3xl font-bold t-text-primary mb-3 tracking-tight" style="font-family: Poppins, sans-serif;">Let's build something.</h2>
-                    <p class="t-text-secondary text-sm sm:text-base max-w-xl mx-auto mb-6 leading-relaxed">Describe your feature or bug fix. Gemini will plan it, spawn a Claude Code session, and execute the changes on the server.</p>
-                    
-                    <div class="mx-auto max-w-sm text-left bg-white/50 dark:bg-[#1a1c23]/50 p-4 border rounded-xl" style="border-color: rgba(50,73,215,0.15)">
-                        <label class="block text-xs font-bold t-text-primary uppercase tracking-wider mb-2">Map task to phone</label>
-                        <select id="new-task-phone" class="t-input border rounded-lg text-sm px-3 py-2 w-full focus:ring-1 focus:ring-[#3249d7] outline-none bg-white dark:bg-[#1a1c23]">
-                            ${phoneOptions}
-                        </select>
-                        <p class="text-[10px] t-text-muted mt-2 italic">This session will be exclusively mapped to your email and this number. Others must request access.</p>
+                `;
+            } else {
+                // Formatting original WhatsApp phone number selector
+                content.innerHTML = `
+                    <div class="max-w-3xl mx-auto py-16 text-center px-4">
+                        <div class="inline-flex items-center justify-center w-20 h-20 rounded-2xl mb-8 border shadow-sm t-border t-bg-subtle">
+                            <svg class="w-10 h-10 t-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                        </div>
+                        <h2 class="text-3xl font-bold t-text-primary mb-4" style="font-family: Poppins, sans-serif;">Let's build something.</h2>
+                        <p class="t-text-secondary text-lg mb-10 max-w-xl mx-auto">Describe your feature or bug fix. Gemini will plan it, spawn a Claude Code session, and execute the changes on the server.</p>
+                        
+                        <div class="max-w-md mx-auto t-bg-subtle border t-border rounded-xl p-5 text-left bg-white/50 backdrop-blur-sm">
+                            <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Map Task to Phone</label>
+                            <select id="new-task-phone" class="w-full text-sm border t-border rounded-lg px-3 py-2.5 bg-white bg-opacity-70 focus:outline-none focus:ring-2 focus:ring-blue-500/50 t-text-primary transition-all">
+                                <option value="">Loading numbers...</option>
+                            </select>
+                            <p class="text-xs text-gray-500 italic mt-3">This session will be exclusively mapped to your email and this number. Others must request access.</p>
+                        </div>
                     </div>
-                </div>
-            `;
+                `;
+
+                const res = await fetch('/api/numbers');
+                const data = await res.json();
+                const sel = document.getElementById('new-task-phone');
+                if (data.numbers && data.numbers.length > 0) {
+                    sel.innerHTML = data.numbers.map(n => `<option value="${n}">${n}</option>`).join('');
+                } else {
+                    sel.innerHTML = `<option value="">No numbers added</option>`;
+                }
+            }
 
             textarea.value = '';
             textarea.disabled = false;
@@ -1148,17 +1174,23 @@
             const val = textarea.value.trim();
             if (!val && !pendingImages.length) return;   // need text OR image
 
-            let phone = document.getElementById('user-phone').value;
-            if (isCreatingNew) {
-                const newDropdown = document.getElementById('new-task-phone');
-                if (newDropdown && newDropdown.value) {
-                    phone = newDropdown.value;
+            let phone = null;
+            if (window.whatsappEnabled === false) {
+                // Use email as the key if WhatsApp disabled
+                phone = window.currentUser?.email;
+            } else {
+                phone = document.getElementById('user-phone')?.value;
+                if (isCreatingNew) {
+                    const newDropdown = document.getElementById('new-task-phone');
+                    if (newDropdown && newDropdown.value) {
+                        phone = newDropdown.value;
+                    }
                 }
-            }
 
-            if (!phone) {
-                alert("Please add an authorized phone number first in the 'Manage numbers' section.");
-                return;
+                if (!phone) {
+                    alert("Please add an authorized phone number first in the 'Manage numbers' section.");
+                    return;
+                }
             }
 
             textarea.value = '';
@@ -1467,6 +1499,8 @@
         }
 
         async function fetchPhones() {
+            if (window.whatsappEnabled === false) return; // Skip in email-only mode
+
             const list = document.getElementById('phones-list');
             try {
                 const res = await fetch('/api/phones');
@@ -1638,12 +1672,17 @@
 
         // ── Auth ──────────────────────────────────────────────
         let currentUser = null;
+        window.whatsappEnabled = true; // Default to true, will be updated by checkAuth
 
         async function checkAuth() {
             try {
                 const res = await fetch('/api/me', { credentials: 'include' });
                 if (res.ok) {
-                    currentUser = await res.json();
+                    const data = await res.json();
+                    currentUser = data.user;
+                    window.currentUser = data.user;
+                    window.whatsappEnabled = data.whatsappEnabled;
+
                     const info = document.getElementById('user-info');
                     info.classList.remove('hidden');
                     info.classList.add('flex');
@@ -1654,6 +1693,16 @@
                     if (currentUser.isAdmin) {
                         document.getElementById('admin-panel-btn').classList.remove('hidden');
                         fetchNotifCount();
+                    }
+
+                    // Update the user-phone dropdown visibility based on whatsappEnabled
+                    const userPhoneSelectContainer = document.getElementById('user-phone-select-container');
+                    if (userPhoneSelectContainer) {
+                        if (window.whatsappEnabled) {
+                            userPhoneSelectContainer.classList.remove('hidden');
+                        } else {
+                            userPhoneSelectContainer.classList.add('hidden');
+                        }
                     }
                 }
             } catch (_) { }
