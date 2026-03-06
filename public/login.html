@@ -185,8 +185,8 @@
                     return;
                 }
                 // Redirect to base path
-                const basePath = window.location.pathname.replace(/\/login\.html$/, '') || '/';
-                window.location.href = basePath + '/';
+                const basePath = window.location.pathname.replace(/\/login\.html$/, '');
+                window.location.href = basePath === '' ? '/' : basePath + '/';
             } catch (e) {
                 console.error("Login exception:", e);
                 errEl.textContent = 'Network error: ' + (e.message || String(e));
