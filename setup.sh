@@ -103,6 +103,14 @@ configure_env() {
     GEMINI_KEY=$(gum input --placeholder "AIza...")
     [ -z "$GEMINI_KEY" ] && fail "Gemini API key is required."
 
+    gum style --foreground 212 --bold "👤  Admin Email (this account will have full admin access)"
+    ADMIN_EMAIL=$(gum input --placeholder "admin@yourcompany.com")
+    [ -z "$ADMIN_EMAIL" ] && fail "Admin email is required."
+
+    gum style --foreground 212 --bold "👤  Admin Display Name"
+    ADMIN_NAME=$(gum input --placeholder "Admin")
+    [ -z "$ADMIN_NAME" ] && ADMIN_NAME="Admin"
+
     # Only ask for phone numbers if WhatsApp is enabled
     ALLOWED_PHONES_VAL=""
     if [ "$ACCESS_MODE" != "Email (dashboard only)" ]; then
@@ -146,6 +154,9 @@ configure_env() {
 GEMINI_API_KEY=$GEMINI_KEY
 GEMINI_MODEL=gemini-3-flash-preview
 CLAUDE_BIN=$CLAUDE_BIN_INPUT
+
+ADMIN_EMAIL=$ADMIN_EMAIL
+ADMIN_NAME=$ADMIN_NAME
 
 ALLOWED_PHONES=$ALLOWED_PHONES_VAL
 

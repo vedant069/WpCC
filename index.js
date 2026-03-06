@@ -28,6 +28,32 @@ if (config.ALLOWED_PHONES.length > 0) {
     console.log(`[Main] Seeded ${config.ALLOWED_PHONES.length} phone(s) from ALLOWED_PHONES env.`);
 }
 
+// ── First-boot admin seeding ────────────────────────────────
+if (config.ADMIN_EMAIL) {
+    const existingAdmins = store.getAdmins();
+    if (existingAdmins.length === 0) {
+        const { generatePassword, sendWelcomeEmail } = await import('./auth.js');
+        const password = generatePassword();
+        const passwordHash = SessionStore.hashPassword(password);
+        store.createUser({
+            email: config.ADMIN_EMAIL.toLowerCase().trim(),
+            displayName: config.ADMIN_NAME || 'Admin',
+            role: 'admin',
+            isAdmin: 1,
+            passwordHash,
+        });
+        console.log(`\n[Auth] ✅ Admin account created!`);
+        console.log(`[Auth]    Email   : ${config.ADMIN_EMAIL}`);
+        console.log(`[Auth]    Password: ${password}`);
+        console.log(`[Auth]    (Change this after first login)\n`);
+        // Also email the password if SMTP is configured
+        if (config.SMTP_USER) {
+            sendWelcomeEmail(config.ADMIN_EMAIL, config.ADMIN_NAME || 'Admin', password)
+                .catch(e => console.warn('[Auth] Welcome email failed:', e.message));
+        }
+    }
+}
+
 const wa = config.WHATSAPP_ENABLED !== false ? new WhatsAppBridge(store) : null;
 const orchestrator = config.WHATSAPP_ENABLED !== false ? new Orchestrator() : null;
 const claude = new ClaudeManager(store);

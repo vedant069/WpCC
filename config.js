@@ -48,6 +48,10 @@ const config = {
 
     // Set to false to disable WhatsApp entirely (email-only mode)
     WHATSAPP_ENABLED: process.env.WHATSAPP_ENABLED !== 'false',
+
+    // First admin account seeded on first boot
+    ADMIN_EMAIL: process.env.ADMIN_EMAIL || '',
+    ADMIN_NAME: process.env.ADMIN_NAME || 'Admin',
 };
 
 export default config;
