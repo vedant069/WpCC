@@ -176,7 +176,6 @@ class SessionStore {
             'UPDATE sessions SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?'
         ).run(status, id);
     }
-
     closeThreadsForPhone(userPhone) {
         const phoneParam = String(userPhone);
         const likeParam = `%"${phoneParam}"%`;
@@ -184,6 +183,10 @@ class SessionStore {
             `UPDATE sessions SET thread_open = 0, updated_at = CURRENT_TIMESTAMP
              WHERE (user_phone = ? OR subscribers LIKE ?) AND thread_open = 1`
         ).run(phoneParam, likeParam);
+    }
+
+    closeThread(userPhone) {
+        this.closeThreadsForPhone(userPhone);
     }
 
     cleanOrphanedSessions() {
