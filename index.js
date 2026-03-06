@@ -55,7 +55,7 @@ if (config.ADMIN_EMAIL) {
 }
 
 const wa = config.WHATSAPP_ENABLED !== false ? new WhatsAppBridge(store) : null;
-const orchestrator = config.WHATSAPP_ENABLED !== false ? new Orchestrator() : null;
+const orchestrator = new Orchestrator();
 const claude = new ClaudeManager(store);
 
 // ── Helpers ──────────────────────────────────────────────────
