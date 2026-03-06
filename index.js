@@ -10,6 +10,7 @@ import './polyfill.js';
 import WhatsAppBridge from './whatsapp.js';
 import Orchestrator from './orchestrator.js';
 import ClaudeManager from './claude_manager.js';
+import OpenCodeManager from './opencode_manager.js';
 import SessionStore from './session_store.js';
 import config from './config.js';
 import { startDashboard } from './dashboard.js';
@@ -56,7 +57,7 @@ if (config.ADMIN_EMAIL) {
 
 const wa = config.WHATSAPP_ENABLED !== false ? new WhatsAppBridge(store) : null;
 const orchestrator = new Orchestrator();
-const claude = new ClaudeManager(store);
+const claude = config.EXECUTION_ENGINE === 'opencode' ? new OpenCodeManager(store) : new ClaudeManager(store);
 
 // ── Helpers ──────────────────────────────────────────────────
 

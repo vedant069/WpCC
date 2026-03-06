@@ -3,7 +3,10 @@
 // ============================================================
 
 const config = {
-    // Path to Claude Code binary
+    // Execution Engine (claude or opencode)
+    EXECUTION_ENGINE: process.env.EXECUTION_ENGINE || 'claude',
+
+    // Path to Claude Code or OpenCode binary
     CLAUDE_BIN: process.env.CLAUDE_BIN || '/home/ubuntu/.local/bin/claude',
 
     // Gemini API
