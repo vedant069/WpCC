@@ -49,33 +49,53 @@ install_deps() {
     npm rebuild node-pty 2>/dev/null && ok "Native modules ready" || warn "node-pty rebuild failed (build tools may be required — not critical)"
 }
 
-# ── Step 2: Check Claude Code ─────────────────────────────────
-check_claude() {
-    step 2 "Check Claude Code Installation"
-    CLAUDE_BIN=$(which claude 2>/dev/null || echo "")
-    if [ -z "$CLAUDE_BIN" ]; then
-        warn "Claude Code not found."
-        if gum confirm "Install Claude Code now?"; then
-            curl -fsSL https://claude.ai/install.sh | bash || npm install -g @anthropic-ai/claude-code 2>/dev/null || {
-                warn "Auto-install failed. Install manually: https://claude.ai/install"
-            }
-            CLAUDE_BIN=$(which claude 2>/dev/null || echo "$HOME/.local/bin/claude")
-        else
-            warn "Skipping Claude Code install. You'll need it to use AI sessions."
-            CLAUDE_BIN="$HOME/.local/bin/claude"
-        fi
-    fi
-    ok "Claude binary: ${CLAUDE_BIN}"
+# ── Step 2: Choose Execution Engine & Check Installation ────────
+check_engine() {
+    step 2 "Check Execution Engine"
+    
+    gum style --foreground 212 --bold "⚙️  Choose Execution Engine"
+    EXEC_ENGINE_CHOICE=$(gum choose "Claude Code" "OpenCode")
+    EXEC_ENGINE="claude"
+    [ "$EXEC_ENGINE_CHOICE" = "OpenCode" ] && EXEC_ENGINE="opencode"
 
-    if "$CLAUDE_BIN" --version &>/dev/null; then
-        ok "Claude Code is authenticated"
-    else
-        warn "Claude is not authenticated. Starting login process..."
-        "$CLAUDE_BIN" login
-        if "$CLAUDE_BIN" --version &>/dev/null; then
-            ok "Claude Code is now authenticated"
+    if [ "$EXEC_ENGINE" = "opencode" ]; then
+        BIN_PATH=$(which opencode 2>/dev/null || echo "")
+        if [ -z "$BIN_PATH" ]; then
+            warn "OpenCode not found."
+            warn "Install manually: npm install -g opencode"
+            BIN_PATH="opencode"
         else
-            fail "Failed to authenticate Claude Code. Please run 'claude login' manually."
+            ok "OpenCode binary: ${BIN_PATH}"
+            if "$BIN_PATH" --version &>/dev/null; then
+                ok "OpenCode is ready"
+            fi
+        fi
+    else
+        BIN_PATH=$(which claude 2>/dev/null || echo "")
+        if [ -z "$BIN_PATH" ]; then
+            warn "Claude Code not found."
+            if gum confirm "Install Claude Code now?"; then
+                curl -fsSL https://claude.ai/install.sh | bash || npm install -g @anthropic-ai/claude-code 2>/dev/null || {
+                    warn "Auto-install failed. Install manually: https://claude.ai/install"
+                }
+                BIN_PATH=$(which claude 2>/dev/null || echo "$HOME/.local/bin/claude")
+            else
+                warn "Skipping Claude Code install."
+                BIN_PATH="$HOME/.local/bin/claude"
+            fi
+        fi
+        ok "Claude binary: ${BIN_PATH}"
+
+        if "$BIN_PATH" --version &>/dev/null; then
+            ok "Claude Code is authenticated"
+        else
+            warn "Claude is not authenticated. Starting login process..."
+            "$BIN_PATH" login
+            if "$BIN_PATH" --version &>/dev/null; then
+                ok "Claude Code is now authenticated"
+            else
+                fail "Failed to authenticate Claude Code. Please run 'claude login' manually."
+            fi
         fi
     fi
 }
@@ -144,20 +164,13 @@ configure_env() {
     WORKING_DIR=$(gum input --placeholder "/home/ubuntu")
     [ -z "$WORKING_DIR" ] && WORKING_DIR="/home/ubuntu"
 
-    gum style --foreground 212 --bold "⚙️  Choose Execution Engine"
-    EXEC_ENGINE_CHOICE=$(gum choose "Claude Code" "OpenCode")
-    EXEC_ENGINE="claude"
-    [ "$EXEC_ENGINE_CHOICE" = "OpenCode" ] && EXEC_ENGINE="opencode"
-
     if [ "$EXEC_ENGINE" = "opencode" ]; then
-        DEFAULT_BIN=$(which opencode 2>/dev/null || echo "opencode")
-        gum style --foreground 212 --bold "🤖  OpenCode binary path [$DEFAULT_BIN]"
+        gum style --foreground 212 --bold "🤖  OpenCode binary path [$BIN_PATH]"
     else
-        DEFAULT_BIN=$(which claude 2>/dev/null || echo "$HOME/.local/bin/claude")
-        gum style --foreground 212 --bold "🤖  Claude binary path [$DEFAULT_BIN]"
+        gum style --foreground 212 --bold "🤖  Claude binary path [$BIN_PATH]"
     fi
-    BIN_INPUT=$(gum input --placeholder "$DEFAULT_BIN")
-    [ -z "$BIN_INPUT" ] && BIN_INPUT="$DEFAULT_BIN"
+    BIN_INPUT=$(gum input --placeholder "$BIN_PATH")
+    [ -z "$BIN_INPUT" ] && BIN_INPUT="$BIN_PATH"
 
     # WHATSAPP_ENABLED flag
     WA_ENABLED="true"
@@ -219,7 +232,7 @@ start_service() {
 print_banner
 install_gum
 install_deps
-check_claude
+check_engine
 choose_mode       # ← Mode is asked FIRST
 configure_env     # ← Env questions depend on mode
 start_service
