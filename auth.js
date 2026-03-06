@@ -26,6 +26,7 @@ const FROM = `"WhatsApp AI Engineer" <${config.SMTP_USER}>`;
 
 /** Welcome email with auto-generated password */
 export async function sendWelcomeEmail(email, displayName, password) {
+    const loginUrl = 'https://dev.pluginlive.com/sessions/login.html';
     await getTransporter().sendMail({
         from: FROM, to: email,
         subject: `You've been added to WhatsApp AI Engineer`,
@@ -40,10 +41,11 @@ export async function sendWelcomeEmail(email, displayName, password) {
                     <tr><td style="padding:6px 0;color:#888;font-size:13px;">Email</td><td style="padding:6px 0;font-weight:600;font-size:13px;">${email}</td></tr>
                     <tr><td style="padding:6px 0;color:#888;font-size:13px;">Password</td><td style="padding:6px 0;font-weight:700;font-size:16px;font-family:monospace;color:#3249d7;letter-spacing:2px;">${password}</td></tr>
                 </table>
+                <p style="color:#555;font-size:14px;margin:20px 0 0;">Login here: <a href="${loginUrl}" style="color:#3249d7;text-decoration:none;font-weight:600;">${loginUrl}</a></p>
                 <p style="color:#e53935;font-size:12px;margin:16px 0 0;">Please keep this password safe. Contact your admin to reset it.</p>
             </div>
         </div>`,
-        text: `Hello ${displayName},\n\nYou have been added to WhatsApp AI Engineer.\n\nEmail: ${email}\nPassword: ${password}\n\nLogin at the dashboard.`,
+        text: `Hello ${displayName},\n\nYou have been added to WhatsApp AI Engineer.\n\nEmail: ${email}\nPassword: ${password}\n\nLogin here: ${loginUrl}`,
     });
 }
 
