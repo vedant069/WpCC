@@ -62,8 +62,15 @@ check_engine() {
         BIN_PATH=$(which opencode 2>/dev/null || echo "")
         if [ -z "$BIN_PATH" ]; then
             warn "OpenCode not found."
-            warn "Install manually: npm install -g opencode"
-            BIN_PATH="opencode"
+            if gum confirm "Install OpenCode now?"; then
+                npm install -g opencode-ai 2>/dev/null || {
+                    warn "Auto-install failed. Install manually: npm install -g opencode-ai"
+                }
+                BIN_PATH=$(which opencode 2>/dev/null || echo "opencode")
+            else
+                warn "Skipping OpenCode install."
+                BIN_PATH="opencode"
+            fi
         else
             ok "OpenCode binary: ${BIN_PATH}"
             if "$BIN_PATH" --version &>/dev/null; then
