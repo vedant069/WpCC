@@ -86,7 +86,7 @@ const WA_MAX = 3800; // safe WhatsApp message size
  * Chunks large outputs into sequential messages to avoid truncation.
  */
 async function sendContent(phone, content, prefix = '') {
-    if (!content) return;
+    if (!content || !wa) return;
     const full = prefix ? `${prefix}\n\n${content}` : content;
     if (full.length <= WA_MAX) {
         await wa.sendMessage(phone, full);
@@ -112,6 +112,7 @@ async function sendContent(phone, content, prefix = '') {
 }
 
 async function broadcastToSubscribers(session, message, prefix = '') {
+    if (!wa) return;
     const phones = session.subscribers_arr || [session.user_phone];
     for (const phone of phones) {
         if (!phone) continue;
