@@ -391,21 +391,21 @@ export async function handleIncomingMessage({ isWeb: explicitIsWeb, phone, text,
                 const recent = store.getGlobalRecentSessions(15);
                 if (recent.length === 0) {
                     await sendContent(replyTo, "No sessions found in history. Send a task to start one!");
-                    break;
+                    return { action: intent.action, status: "list_replied" };
                 }
                 const list = recent.map(s => {
                     const icon = s.status === 'running' ? '🟢' : '🔴';
                     return `${icon} *${s.id}* — ${(s.task || '').slice(0, 50)}`;
                 }).join('\n');
                 await sendContent(replyTo, `📋 *Global Recent Sessions:*\n\n${list}`);
-                break;
+                return { action: intent.action, status: "list_replied" };
             }
 
             case 'STATUS': {
                 const allRunning = store.getAllActiveSessions();
                 if (allRunning.length === 0) {
                     await sendContent(replyTo, "No sessions are currently running.");
-                    break;
+                    return { action: intent.action, status: "status_replied" };
                 }
                 const statuses = allRunning.map(s => {
                     const running = claude.isRunning(s.id);
@@ -413,19 +413,19 @@ export async function handleIncomingMessage({ isWeb: explicitIsWeb, phone, text,
                     return `🟢 *${s.id}*\nTask: ${(s.task || '').slice(0, 60)}\nRunning in bot memory: ${running}\nLast output: ${preview}`;
                 }).join('\n\n');
                 await sendContent(replyTo, statuses);
-                break;
+                return { action: intent.action, status: "status_replied" };
             }
 
             case 'GET_COST': {
                 const totalCost = store.getTotalCost();
                 const prefix = intent.reply ? intent.reply + '\n\n' : '';
                 await sendContent(replyTo, `${prefix}💸 *Total API Spend:* $${totalCost.toFixed(4)}`);
-                break;
+                return { action: intent.action, status: "cost_replied" };
             }
 
             case 'CHAT': {
                 await sendContent(replyTo, intent.reply || "How can I help? Send me a coding task to get started! 🚀");
-                break;
+                return { action: intent.action, status: "chat_replied" };
             }
 
             case 'START_AUTONOMOUS_SESSION': {
@@ -436,7 +436,7 @@ export async function handleIncomingMessage({ isWeb: explicitIsWeb, phone, text,
                     (intent.reply || '🚀 Starting Ralph Wiggum Autonomous Agent...') +
                     `\n📋 Session ID: *${sessionId}*\nRalph will self-loop and run background commands.`
                 );
-                break;
+                return { action: intent.action, sessionId };
             }
 
             default:
