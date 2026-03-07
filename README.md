@@ -63,8 +63,20 @@ KB_DIR=./kb
 ```
 
 **3. Configure Model Context Protocol (MCP)**
-We heavily recommend setting up Claude Code MCP servers (e.g., PostgreSQL, GitHub, Linear) to expand Claude's capabilities.
-Configure these in `~/.claude.json` or by running `claude mcp` on your server directly before starting the application.
+We heavily recommend setting up Claude Code MCP servers to expand Claude's capabilities.
+Configure these in `~/.claude.json` or by running `claude mcp add` on your server directly before starting the application.
+
+Here are the officially supported MCP connectors you can install:
+
+| Tool | Description | Installation Source |
+|------|-------------|---------------------|
+| **GitHub** | GitHub platform (issues, PRs, repos, code search) | [GitHub MCP](https://github.com/modelcontextprotocol/servers/tree/main/src/github) - `npx -y @modelcontextprotocol/server-github` |
+| **Jira** | Jira project management (issues, sprints, boards) | [Jira MCP](https://github.com/modelcontextprotocol/servers/tree/main/src/jira) - `npx -y @modelcontextprotocol/server-jira` |
+| **Notion** | Notion workspace (pages, databases, comments) | [Notion MCP](https://github.com/modelcontextprotocol/servers/tree/main/src/notion) - `npx -y @modelcontextprotocol/server-notion` |
+| **PostgreSQL** | PostgreSQL database queries | [Postgres MCP](https://github.com/modelcontextprotocol/servers/tree/main/src/postgres) - `npx -y @modelcontextprotocol/server-postgres` |
+| **Browser Agent** | Browser automation (browse pages, run tasks) | [Puppeteer MCP](https://github.com/modelcontextprotocol/servers/tree/main/src/puppeteer) - `npx -y @modelcontextprotocol/server-puppeteer` |
+| **Figma** | Figma design tool (designs, screenshots, FigJam) | [Figma MCP](https://github.com/modelcontextprotocol/servers/tree/main/src/figma) - `npx -y @modelcontextprotocol/server-figma` |
+| **S3 Uploads**| AWS S3 file uploads & management | [Smithery S3](https://smithery.ai/server/mcp-s3) - `npx -y mcp-s3` |
 
 ---
 

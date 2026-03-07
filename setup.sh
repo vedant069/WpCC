@@ -144,6 +144,9 @@ configure_env() {
     WORKING_DIR=$(gum input --placeholder "/home/ubuntu")
     [ -z "$WORKING_DIR" ] && WORKING_DIR="/home/ubuntu"
 
+    gum style --foreground 212 --bold "📚  GitHub Knowledge Base URL (optional)"
+    GITHUB_KB_URL_INPUT=$(gum input --placeholder "https://github.com/org/kb-repo")
+
     CLAUDE_BIN_PATH=$(which claude 2>/dev/null || echo "$HOME/.local/bin/claude")
     gum style --foreground 212 --bold "🤖  Claude binary path [$CLAUDE_BIN_PATH]"
     CLAUDE_BIN_INPUT=$(gum input --placeholder "$CLAUDE_BIN_PATH")
@@ -163,6 +166,8 @@ CLAUDE_BIN=$CLAUDE_BIN_INPUT
 
 ADMIN_EMAIL=$ADMIN_EMAIL
 ADMIN_NAME=$ADMIN_NAME
+
+GITHUB_KB_URL=$GITHUB_KB_URL_INPUT
 
 ALLOWED_PHONES=$ALLOWED_PHONES_VAL
 
