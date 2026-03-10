@@ -569,6 +569,13 @@
                         <span id="notif-badge"
                             class="hidden absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 text-white text-[9px] font-bold flex items-center justify-center">0</span>
                     </button>
+                    <button onclick="showCronPanel()" title="Cron Jobs"
+                        class="text-emerald-500 hover:text-white bg-emerald-500/10 hover:bg-emerald-500 p-1.5 rounded-md flex items-center text-xs font-semibold transition-all border border-emerald-500/20 hover:border-emerald-500 cursor-pointer">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    </button>
                     <button onclick="startNewSessionView()"
                         class="text-[#3249d7] hover:text-white bg-[#3249d7]/10 hover:bg-[#3249d7] px-3 py-1.5 rounded-md flex items-center text-xs font-semibold transition-all border border-[#3249d7]/20 hover:border-[#3249d7] cursor-pointer">
                         <svg class="w-3.5 h-3.5 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -711,6 +718,114 @@
                     <!-- Users Table -->
                     <div id="users-list" class="space-y-2">
                         <div class="text-center t-text-muted text-sm py-8">Loading...</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Cron Jobs Panel -->
+            <div id="cron-panel" class="absolute inset-0 z-20 t-main overflow-y-auto hidden">
+                <div class="max-w-4xl mx-auto px-3 sm:px-4 py-4 sm:py-8">
+                    <div class="flex items-center justify-between mb-6">
+                        <h2 class="text-xl font-bold t-text-primary" style="font-family: Poppins, sans-serif;">⏰ Cron
+                            Jobs</h2>
+                        <button onclick="hideCronPanel()"
+                            class="t-text-muted hover:text-red-400 transition-colors cursor-pointer">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <!-- Left: Add/Edit Form -->
+                        <div class="lg:col-span-1 space-y-4">
+                            <div class="t-card rounded-xl p-4 border" style="border-color: rgba(16, 185, 129, 0.2);">
+                                <p class="text-xs t-text-muted uppercase tracking-wider font-bold mb-3">Add / Edit Job
+                                </p>
+                                <div class="space-y-3">
+                                    <div>
+                                        <label class="block text-[10px] t-text-muted uppercase font-bold mb-1">Job ID
+                                            (Unique)</label>
+                                        <input id="cron-id" type="text" placeholder="e.g. daily_report"
+                                            class="t-input border rounded-lg px-3 py-2 text-sm w-full outline-none focus:ring-1 focus:ring-emerald-500"
+                                            style="border-color: rgba(16, 185, 129, 0.2);">
+                                    </div>
+                                    <div>
+                                        <label class="block text-[10px] t-text-muted uppercase font-bold mb-1">Cron
+                                            Expression</label>
+                                        <input id="cron-schedule" type="text" placeholder="e.g. 0 9 * * *"
+                                            class="t-input border rounded-lg px-3 py-2 text-sm w-full outline-none focus:ring-1 focus:ring-emerald-500"
+                                            style="border-color: rgba(16, 185, 129, 0.2);">
+                                        <p class="text-[10px] t-text-muted mt-1">Min | Hour | DOM | Mon | DOW</p>
+                                    </div>
+                                    <div>
+                                        <label class="block text-[10px] t-text-muted uppercase font-bold mb-1">Task
+                                            Content</label>
+                                        <textarea id="cron-task" placeholder="What should Claude do?"
+                                            class="t-input border rounded-lg px-3 py-2 text-sm w-full h-24 resize-none outline-none focus:ring-1 focus:ring-emerald-500"
+                                            style="border-color: rgba(16, 185, 129, 0.2);"></textarea>
+                                    </div>
+                                    <div>
+                                        <label class="block text-[10px] t-text-muted uppercase font-bold mb-1">Target
+                                            Phone (Opt)</label>
+                                        <input id="cron-phone" type="text" placeholder="e.g. 919876543210"
+                                            class="t-input border rounded-lg px-3 py-2 text-sm w-full outline-none focus:ring-1 focus:ring-emerald-500"
+                                            style="border-color: rgba(16, 185, 129, 0.2);">
+                                    </div>
+                                    <button onclick="saveCron()"
+                                        class="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-semibold transition-colors cursor-pointer">Save
+                                        Job</button>
+                                </div>
+                            </div>
+
+                            <div class="t-card rounded-xl p-4 border" style="border-color: rgba(50, 73, 215, 0.1);">
+                                <p class="text-[10px] t-text-muted leading-relaxed italic">
+                                    Jobs are stored in <code>cron_jobs.json</code>. The <code>CronManager</code> watches
+                                    this file and updates schedulers automatically.
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- Right: List & Logs -->
+                        <div class="lg:col-span-2 space-y-6">
+                            <!-- Jobs List -->
+                            <div>
+                                <p
+                                    class="text-xs t-text-muted uppercase tracking-wider font-bold mb-3 flex items-center justify-between">
+                                    <span>Active Schedulers</span>
+                                    <button onclick="fetchCrons()"
+                                        class="text-emerald-500 hover:underline">Refresh</button>
+                                </p>
+                                <div id="cron-list" class="space-y-2">
+                                    <div class="text-center t-text-muted text-sm py-4">No jobs configured.</div>
+                                </div>
+                            </div>
+
+                            <!-- Logs Section -->
+                            <div>
+                                <p
+                                    class="text-xs t-text-muted uppercase tracking-wider font-bold mb-3 flex items-center justify-between">
+                                    <span>Recent Executions</span>
+                                    <button onclick="fetchCronLogs()" class="text-emerald-500 hover:underline">Refresh
+                                        Logs</button>
+                                </p>
+                                <div id="cron-logs" class="t-card border rounded-xl overflow-hidden text-xs"
+                                    style="border-color:rgba(50,73,215,0.1);">
+                                    <div class="bg-black/5 dark:bg-white/5 px-3 py-2 font-bold flex border-b"
+                                        style="border-color:inherit;">
+                                        <div class="w-1/4">Time</div>
+                                        <div class="w-1/4">Job ID</div>
+                                        <div class="w-1/4">Status</div>
+                                        <div class="w-1/4 text-right">Details</div>
+                                    </div>
+                                    <div id="cron-logs-list" class="divide-y max-h-64 overflow-y-auto"
+                                        style="border-color:inherit;">
+                                        <div class="p-4 text-center t-text-muted">No logs available.</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1842,6 +1957,117 @@
                 if (d.error) return alert('Error: ' + d.error);
                 alert('✅ Request sent! The admin will be notified and will review your request.');
             } catch (e) { alert('Network error'); }
+        }
+
+        // ── Cron Management ───────────────────────────────────
+        function showCronPanel() {
+            closeSidebar();
+            ['empty-state', 'workspace-header', 'workspace-content', 'workspace-input-area', 'phones-panel', 'admin-panel'].forEach(id => document.getElementById(id)?.classList.add('hidden'));
+            document.getElementById('cron-panel').classList.remove('hidden');
+            fetchCrons();
+            fetchCronLogs();
+        }
+
+        function hideCronPanel() {
+            document.getElementById('cron-panel').classList.add('hidden');
+            if (!currentSessionId) document.getElementById('empty-state').classList.remove('hidden');
+            else {
+                ['workspace-header', 'workspace-content', 'workspace-input-area'].forEach(id => document.getElementById(id)?.classList.remove('hidden'));
+            }
+        }
+
+        async function fetchCrons() {
+            const list = document.getElementById('cron-list');
+            try {
+                const res = await fetch('/api/cron');
+                const crons = await res.json();
+                if (!Array.isArray(crons) || crons.length === 0) {
+                    list.innerHTML = '<div class="text-center t-text-muted text-sm py-8 border rounded-xl border-dashed">No jobs yet. Create one on the left!</div>';
+                    return;
+                }
+                list.innerHTML = crons.map(c => `
+                    <div class="t-card border rounded-xl px-4 py-3 flex items-center justify-between gap-3 group" style="border-color:rgba(16, 185, 129, 0.15);">
+                        <div class="min-w-0 flex-1">
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs px-1.5 py-0.5 bg-emerald-500/10 text-emerald-500 rounded font-mono font-bold">${escapeHtml(c.id)}</span>
+                                <span class="text-xs font-mono t-text-primary bg-black/5 dark:bg-white/5 px-1.5 py-0.5 rounded">${escapeHtml(c.schedule)}</span>
+                            </div>
+                            <p class="text-[11px] t-text-muted mt-1 truncate italic">"${escapeHtml(c.task)}"</p>
+                        </div>
+                        <div class="flex gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button onclick="editCron('${escapeHtml(JSON.stringify(c).replace(/'/g, "\\'"))}')" class="px-2 py-1 text-[10px] font-bold bg-black/5 dark:bg-white/5 hover:bg-emerald-500 hover:text-white rounded transition-colors cursor-pointer">Edit</button>
+                            <button onclick="deleteCron('${escapeHtml(c.id)}')" class="px-2 py-1 text-[10px] font-bold bg-black/5 dark:bg-white/5 hover:bg-red-500 hover:text-white rounded transition-colors cursor-pointer">Del</button>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (e) { list.innerHTML = '<div class="text-red-400 text-sm">Error loading crons.</div>'; }
+        }
+
+        async function saveCron() {
+            const id = document.getElementById('cron-id').value;
+            const schedule = document.getElementById('cron-schedule').value;
+            const task = document.getElementById('cron-task').value;
+            const phone = document.getElementById('cron-phone').value;
+
+            if (!id || !schedule || !task) return alert('ID, Schedule, and Task are required.');
+
+            try {
+                const res = await fetch('/api/cron', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id, schedule, task, phone })
+                });
+                const data = await res.json();
+                if (data.error) return alert('Save failed: ' + data.error);
+
+                // Reset form
+                document.getElementById('cron-id').value = '';
+                document.getElementById('cron-schedule').value = '';
+                document.getElementById('cron-task').value = '';
+                document.getElementById('cron-phone').value = '';
+
+                fetchCrons();
+            } catch (e) { alert('Network error: ' + e.message); }
+        }
+
+        async function deleteCron(id) {
+            if (!confirm('Delete this cron job?')) return;
+            try {
+                await fetch(`/api/cron/${id}`, { method: 'DELETE' });
+                fetchCrons();
+            } catch (e) { alert('Error'); }
+        }
+
+        function editCron(cStr) {
+            const c = JSON.parse(cStr);
+            document.getElementById('cron-id').value = c.id;
+            document.getElementById('cron-schedule').value = c.schedule;
+            document.getElementById('cron-task').value = c.task;
+            document.getElementById('cron-phone').value = c.phone || '';
+        }
+
+        async function fetchCronLogs() {
+            const list = document.getElementById('cron-logs-list');
+            try {
+                const res = await fetch('/api/cron-logs');
+                const logs = await res.json();
+                if (logs.length === 0) {
+                    list.innerHTML = '<div class="p-4 text-center t-text-muted text-[10px]">No logs yet.</div>';
+                    return;
+                }
+                list.innerHTML = logs.map(l => {
+                    const time = new Date(l.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                    const statusClass = l.status === 'spawned' ? 'bg-emerald-500/10 text-emerald-500' : (l.status === 'failed' ? 'bg-red-500/10 text-red-500' : 'bg-blue-500/10 text-blue-500');
+                    return `
+                        <div class="px-3 py-1.5 flex items-center gap-1 hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
+                            <div class="w-1/4 t-text-muted font-mono">${time}</div>
+                            <div class="w-1/4 font-semibold truncate">${escapeHtml(l.jobId)}</div>
+                            <div class="w-1/4"><span class="px-1.5 py-0.5 rounded ${statusClass} uppercase font-bold text-[8px]">${l.status}</span></div>
+                            <div class="w-1/4 text-right t-text-muted truncate" title="${l.session || l.error || ''}">${escapeHtml(l.session || l.error || '')}</div>
+                        </div>
+                    `;
+                }).join('');
+            } catch (e) { list.innerHTML = '<div class="p-4 text-red-400">Error logs.</div>'; }
         }
 
     </script>

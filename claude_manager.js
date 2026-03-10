@@ -50,6 +50,14 @@ class ClaudeManager extends EventEmitter {
     }
 
     /**
+     * Start a fully autonomous background session (alias for startSession since
+     * all our claudes run with dangerously-skip-permissions).
+     */
+    async startAutonomousSession(userPhone, task, workingDir, imagePath = null, ownerId = null) {
+        return this.startSession(userPhone, task, workingDir, imagePath, ownerId);
+    }
+
+    /**
      * Resume an existing session with a follow-up message.
      * Uses Claude's --resume <claude_session_id> so full history is preserved by Claude.
      */

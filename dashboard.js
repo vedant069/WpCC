@@ -270,6 +270,76 @@ export function startDashboard(store, messageHandler, port = 18790, wa = null, e
         } catch (err) { res.status(500).json({ error: err.message }); }
     });
 
+    // ── Cron Jobs ─────────────────────────────────────────────
+
+    app.get('/api/cron', requireAuth, requireAdmin, (req, res) => {
+        try {
+            const cronPath = path.join(config.DEFAULT_WORKING_DIR || process.cwd(), 'cron_jobs.json');
+            if (fs.existsSync(cronPath)) {
+                res.json(JSON.parse(fs.readFileSync(cronPath, 'utf8')));
+            } else {
+                res.json([]);
+            }
+        } catch (err) { res.status(500).json({ error: err.message }); }
+    });
+
+    app.post('/api/cron', requireAuth, requireAdmin, (req, res) => {
+        try {
+            let { id, schedule, task, phone } = req.body;
+            if (!id || !schedule || !task) return res.status(400).json({ error: 'id, schedule, task are required' });
+
+            // Format ID properly
+            id = id.trim().replace(/[^a-zA-Z0-9_-]/g, '_');
+
+            const cronPath = path.join(config.DEFAULT_WORKING_DIR || process.cwd(), 'cron_jobs.json');
+            let jobs = [];
+            if (fs.existsSync(cronPath)) {
+                try { jobs = JSON.parse(fs.readFileSync(cronPath, 'utf8')); } catch (e) { }
+            }
+            if (!Array.isArray(jobs)) jobs = [];
+
+            const existingIdx = jobs.findIndex(j => j.id === id);
+            if (existingIdx >= 0) {
+                jobs[existingIdx] = { id, schedule, task, phone: phone || 'system_cron' };
+            } else {
+                jobs.push({ id, schedule, task, phone: phone || 'system_cron' });
+            }
+
+            fs.writeFileSync(cronPath, JSON.stringify(jobs, null, 2));
+            res.json({ success: true, message: 'Cron job saved successfully' });
+        } catch (err) { res.status(500).json({ error: err.message }); }
+    });
+
+    app.delete('/api/cron/:id', requireAuth, requireAdmin, (req, res) => {
+        try {
+            const cronPath = path.join(config.DEFAULT_WORKING_DIR || process.cwd(), 'cron_jobs.json');
+            if (fs.existsSync(cronPath)) {
+                try {
+                    let jobs = JSON.parse(fs.readFileSync(cronPath, 'utf8'));
+                    if (Array.isArray(jobs)) {
+                        jobs = jobs.filter(j => j.id !== req.params.id);
+                        fs.writeFileSync(cronPath, JSON.stringify(jobs, null, 2));
+                    }
+                } catch (e) { }
+            }
+            res.json({ success: true });
+        } catch (err) { res.status(500).json({ error: err.message }); }
+    });
+
+    app.get('/api/cron-logs', requireAuth, requireAdmin, (req, res) => {
+        try {
+            const logsPath = path.join(config.DEFAULT_WORKING_DIR || process.cwd(), 'cron_logs.jsonl');
+            if (fs.existsSync(logsPath)) {
+                const logs = fs.readFileSync(logsPath, 'utf8').trim().split('\n').map(l => {
+                    try { return JSON.parse(l); } catch (e) { return null; }
+                }).filter(Boolean);
+                res.json(logs.slice(-50).reverse());
+            } else {
+                res.json([]);
+            }
+        } catch (err) { res.status(500).json({ error: err.message }); }
+    });
+
     // ── File Upload ───────────────────────────────────────────
 
     const uploadHandler = express.raw({ type: '*/*', limit: '50mb' });

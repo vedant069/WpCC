@@ -12,6 +12,7 @@ import Orchestrator from './orchestrator.js';
 import ClaudeManager from './claude_manager.js';
 import SessionStore from './session_store.js';
 import config from './config.js';
+import CronManager from './cron_manager.js';
 import { startDashboard } from './dashboard.js';
 
 // ── Initialize components ─────────────────────────────────────
@@ -55,8 +56,9 @@ if (config.ADMIN_EMAIL) {
 }
 
 const wa = config.WHATSAPP_ENABLED !== false ? new WhatsAppBridge(store) : null;
-const orchestrator = new Orchestrator();
+const orchestrator = config.WHATSAPP_ENABLED !== false ? new Orchestrator() : null;
 const claude = new ClaudeManager(store);
+const cronManager = new CronManager(claude, wa);
 
 // ── Helpers ──────────────────────────────────────────────────
 

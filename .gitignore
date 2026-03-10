@@ -35,5 +35,7 @@ kb/
 .node_repl_history
 
 # OS metadata
+# OS metadata
 .DS_Store
 Thumbs.db
+cron_jobs.json
